@@ -127,6 +127,7 @@ const css = `
     .tb-pagination-info { display:none; }
     .tb-filter-btn { font-size:9.5px; padding:5px 8px; }
   }
+  .tb-kpi {
     background:#fff; border:1px solid var(--border);
     border-radius:16px; padding:20px 20px 16px;
     box-shadow:0 1px 4px rgba(0,0,0,0.05), 0 4px 18px rgba(0,0,0,0.07);
