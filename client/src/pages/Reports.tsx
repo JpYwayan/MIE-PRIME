@@ -1,7 +1,8 @@
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   TrendingUp, Scale, RefreshCw, CheckCircle2, XCircle, Printer, DollarSign,
+  Users, ArrowRightLeft, Download, FileText, Share2, ChevronDown,
 } from "lucide-react";
 
 const TYPE_META = {
@@ -21,6 +22,7 @@ const css = `
   @keyframes pulse    { 0%,100% { opacity:1; } 50% { opacity:.35; } }
   @keyframes shimmer  { to { background-position:-200% 0; } }
   @keyframes slideIn  { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:none; } }
+  @keyframes dropDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
 
   .rp {
     font-family: 'DM Sans', sans-serif;
@@ -36,6 +38,7 @@ const css = `
     display: flex; align-items: flex-end; justify-content: space-between;
     padding: 28px 32px 0;
     animation: fadeIn .4s ease both;
+    position: relative; z-index: 200;
   }
   .rp-eyebrow {
     font-size: 10px; font-weight: 600; color: var(--ink4);
@@ -54,7 +57,7 @@ const css = `
     letter-spacing: -.02em; margin: 0 0 4px; line-height: 1.1;
   }
   .rp-sub { font-size: 13px; color: rgba(255,255,255,.4); margin: 0; font-weight: 400; }
-  .rp-actions { display: flex; gap: 8px; padding-bottom: 4px; }
+  .rp-actions { display: flex; gap: 8px; padding-bottom: 4px; align-items: center; }
   .rp-btn {
     display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
     background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18);
@@ -63,6 +66,45 @@ const css = `
     letter-spacing: .01em;
   }
   .rp-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
+
+  /* ── EXPORT DROPDOWN ── */
+  .rp-export-wrap { position: relative; }
+  .rp-export-btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+    background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25);
+    border-radius: 8px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.9);
+    cursor: pointer; transition: all .15s; font-family: 'DM Sans', sans-serif;
+    letter-spacing: .01em;
+  }
+  .rp-export-btn:hover { background: rgba(255,255,255,.22); color: #fff; }
+  .rp-export-menu {
+    position: absolute; top: calc(100% + 6px); right: 0; z-index: 100;
+    background: #fff; border: 1px solid rgba(15,23,42,.1);
+    border-radius: 12px; padding: 6px;
+    box-shadow: 0 8px 32px rgba(15,23,42,.16), 0 2px 8px rgba(15,23,42,.08);
+    min-width: 200px;
+    animation: dropDown .18s ease both;
+  }
+  .rp-export-section-label {
+    font-size: 9px; font-weight: 700; color: #94a3b8; letter-spacing: .14em;
+    text-transform: uppercase; font-family: 'DM Mono', monospace;
+    padding: 8px 10px 4px;
+  }
+  .rp-export-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 7px; cursor: pointer;
+    transition: background .1s; border: none; background: transparent;
+    width: 100%; text-align: left; font-family: 'DM Sans', sans-serif;
+  }
+  .rp-export-item:hover { background: #f1f5f9; }
+  .rp-export-icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .rp-export-item-text { display: flex; flex-direction: column; }
+  .rp-export-item-name { font-size: 12.5px; font-weight: 600; color: #0f172a; }
+  .rp-export-item-desc { font-size: 10.5px; color: #94a3b8; margin-top: 1px; }
+  .rp-export-divider { height: 1px; background: rgba(15,23,42,.06); margin: 4px 0; }
 
   /* ── TABS ── */
   .rp-tabs-wrap {
@@ -135,7 +177,6 @@ const css = `
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     background-size: 160px 160px;
   }
-  /* Soft glowing blobs — friendlier, more colourful */
   .rp-paper-band-orb {
     position: absolute; width: 320px; height: 320px; border-radius: 50%;
     background: radial-gradient(circle, rgba(99,130,255,0.35) 0%, transparent 65%);
@@ -153,7 +194,6 @@ const css = `
   }
   .rp-paper-band-content { position: relative; z-index: 1; }
 
-  /* Friendly icon circle instead of tiny badge */
   .rp-paper-icon-wrap {
     width: 52px; height: 52px; border-radius: 16px;
     background: rgba(255,255,255,.14); border: 1.5px solid rgba(255,255,255,.22);
@@ -273,6 +313,22 @@ const css = `
     background-size: 200% 100%; animation: shimmer 1.2s infinite;
   }
 
+  /* Toast notification */
+  .rp-toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 18px; border-radius: 12px;
+    background: #0f172a; color: #fff;
+    font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+    box-shadow: 0 8px 32px rgba(0,0,0,.3);
+    animation: fadeUp .25s ease both;
+  }
+  .rp-toast-icon {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: rgba(255,255,255,.12);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
   @media (max-width: 768px) {
     .rp-bs-grid { grid-template-columns: 1fr; }
     .rp-bs-col:first-child { border-right: none; border-bottom: 1px dashed rgba(0,0,0,.09); }
@@ -285,7 +341,95 @@ const css = `
     .rp-item, .rp-sec-hd, .rp-item-empty, .rp-paper-foot, .rp-dashed-hr { padding-left: 24px; padding-right: 24px; }
     .rp-subtotal { padding-left: 24px; padding-right: 24px; }
     .rp-shimmer { margin-left: 24px; margin-right: 24px; }
+    .rp-export-menu { right: auto; left: 0; }
   }
+
+  /* ── PHONE: 600px ── */
+  @media (max-width: 600px) {
+    /* Header — title + actions stacked */
+    .rp-header { padding: 16px 16px 0; gap: 10px; }
+    .rp-title { font-size: 26px; }
+    .rp-actions { flex-wrap: wrap; gap: 6px; }
+    .rp-btn { padding: 7px 12px; font-size: 11.5px; }
+
+    /* Tab strip — allow horizontal scroll on very small screens */
+    .rp-tabs-wrap { padding: 14px 16px 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .rp-tab-track { flex-shrink: 0; }
+    .rp-tab { padding: 7px 13px; font-size: 11.5px; gap: 5px; }
+
+    /* Body */
+    .rp-body { padding: 14px 16px 28px; }
+
+    /* Paper card */
+    .rp-paper { border-radius: 14px; }
+    .rp-paper::before { left: 4px; right: -4px; bottom: -4px; border-radius: 14px; }
+    .rp-paper::after  { left: 8px; right: -8px; bottom: -8px; border-radius: 14px; }
+
+    /* Band */
+    .rp-paper-band { padding: 24px 20px 20px; border-radius: 14px 14px 0 0; }
+    .rp-paper-icon-wrap { width: 42px; height: 42px; border-radius: 12px; margin-bottom: 12px; }
+    .rp-paper-heading { font-size: 22px; margin-bottom: 6px; }
+    .rp-paper-period  { font-size: 9.5px; }
+    .rp-paper-badge   { font-size: 8.5px; padding: 3px 10px; margin-bottom: 10px; }
+
+    /* Line items — tighter horizontal padding */
+    .rp-item, .rp-sec-hd, .rp-item-empty, .rp-dashed-hr { padding-left: 16px; padding-right: 16px; }
+    .rp-item { padding-top: 8px; padding-bottom: 8px; }
+    .rp-item-name { font-size: 13px; }
+    .rp-item-amt  { font-size: 13px; }
+    .rp-subtotal  { padding-left: 16px; padding-right: 16px; padding-top: 11px; padding-bottom: 11px; }
+    .rp-subtotal-lbl { font-size: 10px; }
+    .rp-subtotal-val { font-size: 15px; }
+    .rp-shimmer { margin-left: 16px; margin-right: 16px; }
+
+    /* Grand total */
+    .rp-grand { margin: 14px 12px 16px; border-radius: 12px; }
+    .rp-grand-inner { padding: 14px 16px; flex-wrap: wrap; gap: 10px; }
+    .rp-grand-lbl { font-size: 13px; }
+    .rp-grand-sub { font-size: 9.5px; }
+    .rp-grand-val { font-size: 19px; }
+    .rp-grand-icon { width: 34px; height: 34px; border-radius: 10px; }
+
+    /* Footer */
+    .rp-paper-foot { padding: 12px 16px 20px; flex-wrap: wrap; gap: 10px; }
+    .rp-foot-barcode { display: none; } /* barcode decorative only — hide on phones */
+
+    /* Toast */
+    .rp-toast { left: 12px; right: 12px; bottom: 16px; }
+  }
+
+  /* ── PHONE: 480px ── */
+  @media (max-width: 480px) {
+    .rp-header { padding: 14px 14px 0; }
+    .rp-body   { padding: 12px 12px 24px; }
+    .rp-tabs-wrap { padding: 12px 14px 0; }
+    .rp-tab { padding: 6px 11px; font-size: 11px; }
+    .rp-paper-band { padding: 20px 16px 16px; }
+    .rp-paper-heading { font-size: 19px; }
+    .rp-title { font-size: 22px; }
+    .rp-sec-hd { padding-top: 16px; padding-bottom: 8px; }
+    .rp-grand-inner { flex-direction: column; align-items: flex-start; }
+    .rp-grand-val { font-size: 22px; }      /* larger when on its own line */
+    .rp-grand-left { width: 100%; }
+    .rp-export-menu { min-width: 180px; }
+    .rp-export-item-desc { display: none; } /* too small at 480 — hide sub-labels */
+  }
+
+  /* ── PHONE: 380px ── */
+  @media (max-width: 380px) {
+    .rp-header { padding: 12px 12px 0; }
+    .rp-body   { padding: 10px 10px 20px; }
+    .rp-actions { width: 100%; }
+    .rp-btn, .rp-export-btn { flex: 1; justify-content: center; font-size: 11px; padding: 7px 8px; }
+    .rp-paper-heading { font-size: 17px; }
+    .rp-title { font-size: 20px; }
+    .rp-tab { padding: 6px 9px; gap: 4px; }
+    .rp-item-name { font-size: 12px; }
+    .rp-item-amt  { font-size: 12px; }
+    .rp-subtotal-val { font-size: 14px; }
+    .rp-grand { margin: 10px 8px 14px; }
+  }
+
   @media print {
     .rp-header, .rp-tabs-wrap { display: none !important; }
     .rp-body { padding: 0 !important; }
@@ -345,14 +489,180 @@ function Subtotal({ label, value, color }: { label:string; value:number; color:s
   );
 }
 
+/* ── CSV Export Utilities ── */
+function downloadCSV(filename: string, rows: string[][]) {
+  const csv = rows
+    .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ── PDF Export via browser print with print-specific layout ── */
+function printAsPDF(reportTitle: string) {
+  const originalTitle = document.title;
+  document.title = reportTitle;
+  window.print();
+  document.title = originalTitle;
+}
+
+/* ── Share / copy link ── */
+async function copyShareLink(tab: string) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("report", tab);
+  await navigator.clipboard.writeText(url.toString());
+}
+
+/* ─────────────────────────────────────
+   EXPORT DROPDOWN
+───────────────────────────────────── */
+interface ExportDropdownProps {
+  tab: string;
+  onCsvIncome:   () => void;
+  onCsvBalance:  () => void;
+  onCsvEquity:   () => void;
+  onCsvCashflow: () => void;
+  onPdf:         () => void;
+  onShare:       () => void;
+}
+
+function ExportDropdown({
+  tab, onCsvIncome, onCsvBalance, onCsvEquity, onCsvCashflow, onPdf, onShare,
+}: ExportDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Close on any click outside the dropdown wrapper
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const close = () => setOpen(false);
+
+  const currentCsv: Record<string, () => void> = {
+    income:   onCsvIncome,
+    balance:  onCsvBalance,
+    equity:   onCsvEquity,
+    cashflow: onCsvCashflow,
+  };
+
+  const handleCsvCurrent = () => { currentCsv[tab]?.(); close(); };
+  const handleCsvAll     = () => { onCsvIncome(); onCsvBalance(); onCsvEquity(); onCsvCashflow(); close(); };
+  const handlePdf        = () => { onPdf(); close(); };
+  const handleShare      = () => { onShare(); close(); };
+
+  const tabLabels: Record<string, string> = {
+    income: "Income Statement", balance: "Balance Sheet",
+    equity: "Owner's Equity",  cashflow: "Cash Flow",
+  };
+
+  return (
+    <div className="rp-export-wrap" ref={wrapRef}>
+      <button className="rp-export-btn" onClick={() => setOpen(v => !v)}>
+        <Download size={12} />
+        Export
+        <ChevronDown size={11} style={{ opacity: .65, marginLeft: 2 }} />
+      </button>
+
+      {open && (
+        <div className="rp-export-menu">
+            {/* CSV section */}
+            <div className="rp-export-section-label">CSV Download</div>
+            <button className="rp-export-item" onClick={handleCsvCurrent}>
+              <div className="rp-export-icon" style={{ background:"#f0fdf4" }}>
+                <FileText size={13} color="#16a34a" />
+              </div>
+              <div className="rp-export-item-text">
+                <span className="rp-export-item-name">Current Report</span>
+                <span className="rp-export-item-desc">{tabLabels[tab]}</span>
+              </div>
+            </button>
+            <button className="rp-export-item" onClick={handleCsvAll}>
+              <div className="rp-export-icon" style={{ background:"#eff6ff" }}>
+                <FileText size={13} color="#2563eb" />
+              </div>
+              <div className="rp-export-item-text">
+                <span className="rp-export-item-name">All Reports</span>
+                <span className="rp-export-item-desc">4 CSV files at once</span>
+              </div>
+            </button>
+
+            <div className="rp-export-divider" />
+
+            {/* PDF section */}
+            <div className="rp-export-section-label">PDF / Print</div>
+            <button className="rp-export-item" onClick={handlePdf}>
+              <div className="rp-export-icon" style={{ background:"#fff7ed" }}>
+                <Printer size={13} color="#ea580c" />
+              </div>
+              <div className="rp-export-item-text">
+                <span className="rp-export-item-name">Save as PDF</span>
+                <span className="rp-export-item-desc">Print-optimised layout</span>
+              </div>
+            </button>
+
+            <div className="rp-export-divider" />
+
+            {/* Share section */}
+            <div className="rp-export-section-label">Share</div>
+            <button className="rp-export-item" onClick={handleShare}>
+              <div className="rp-export-icon" style={{ background:"#fdf4ff" }}>
+                <Share2 size={13} color="#9333ea" />
+              </div>
+              <div className="rp-export-item-text">
+                <span className="rp-export-item-name">Copy Link</span>
+                <span className="rp-export-item-desc">Share direct report URL</span>
+              </div>
+            </button>
+          </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────
+   TOAST
+───────────────────────────────────── */
+function Toast({ message, icon }: { message: string; icon: React.ReactNode }) {
+  return (
+    <div className="rp-toast">
+      <div className="rp-toast-icon">{icon}</div>
+      {message}
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════════ */
 export default function Reports() {
-  const [tab, setTab] = useState<"income"|"balance">("income");
+  const [tab, setTab] = useState<"income"|"balance"|"equity"|"cashflow">("income");
+  const [toast, setToast] = useState<{ msg: string; icon: React.ReactNode } | null>(null);
 
   const { data: inc, isLoading: incLoad, refetch: refInc } = trpc.reports.incomeStatement.useQuery({});
   const { data: bs,  isLoading: bsLoad,  refetch: refBs  } = trpc.reports.balanceSheet.useQuery({});
+  const { data: eq,  isLoading: eqLoad,  refetch: refEq  } = trpc.reports.ownerEquity.useQuery(
+    {}, { enabled: tab === "equity" }
+  );
+  const { data: cf,  isLoading: cfLoad,  refetch: refCf  } = trpc.reports.cashFlow.useQuery(
+    {}, { enabled: tab === "cashflow" }
+  );
 
-  const refetchAll = () => { refInc(); refBs(); };
+  const refetchAll = () => {
+    refInc(); refBs();
+    if (tab === "equity")   refEq();
+    if (tab === "cashflow") refCf();
+  };
 
   const totalRev  = Number(inc?.totalRevenue    ?? 0);
   const totalExp  = Number(inc?.totalExpenses   ?? 0);
@@ -362,8 +672,126 @@ export default function Reports() {
   const totalEq   = Number(bs?.totalEquity      ?? 0);
   const balanced  = Math.abs(totalAst - (totalLib + totalEq)) < 0.01;
 
-  const ref  = refNo(tab === "income" ? "IS" : "BS");
+  const beginEq   = Number(eq?.beginningEquity  ?? 0);
+  const addInvest = Number(eq?.additionalInvestments ?? 0);
+  const withdrawals = Number(eq?.withdrawals    ?? 0);
+  const endEq     = Number(eq?.endingEquity     ?? beginEq + addInvest + netInc - withdrawals);
+
+  const cfOps   = Number(cf?.netCashFromOperations  ?? 0);
+  const cfInv   = Number(cf?.netCashFromInvesting   ?? 0);
+  const cfFin   = Number(cf?.netCashFromFinancing   ?? 0);
+  const netCash = cfOps + cfInv + cfFin;
+  const begCash = Number(cf?.beginningCash ?? 0);
+  const endCash = Number(cf?.endingCash   ?? begCash + netCash);
+
+  const refSfx: Record<string,string> = { income:"IS", balance:"BS", equity:"OE", cashflow:"CF" };
+  const ref  = refNo(refSfx[tab] ?? "RPT");
   const bars = barcodeHeights(ref);
+
+  /* ── Toast helper ── */
+  const showToast = (msg: string, icon: React.ReactNode) => {
+    setToast({ msg, icon });
+    setTimeout(() => setToast(null), 2800);
+  };
+
+  /* ── CSV Export builders ── */
+  const csvIncome = () => {
+    const header = ["Category", "Account", "Amount (PHP)"];
+    const rows: string[][] = [header];
+    (inc?.revenues ?? []).forEach((r: any) =>
+      rows.push(["Revenue", r.accountName, String(r.amount)]));
+    rows.push(["", "Total Revenue", String(totalRev)]);
+    rows.push(["", "", ""]);
+    (inc?.expenses ?? []).forEach((e: any) =>
+      rows.push(["Expense", e.accountName, String(e.amount)]));
+    rows.push(["", "Total Expenses", String(totalExp)]);
+    rows.push(["", "", ""]);
+    rows.push(["", "Net Income", String(netInc)]);
+    rows.push(["", "Period", dateLbl()]);
+    rows.push(["", "Reference", refNo("IS")]);
+    downloadCSV(`income-statement-${new Date().toISOString().slice(0,10)}.csv`, rows);
+    showToast("Income Statement CSV downloaded", <FileText size={13} color="#4ade80" />);
+  };
+
+  const csvBalance = () => {
+    const rows: string[][] = [["Section", "Account", "Balance (PHP)"]];
+    (bs?.assets ?? []).forEach((a: any) =>
+      rows.push(["Asset", a.accountName, String(a.balance)]));
+    rows.push(["", "Total Assets", String(totalAst)]);
+    rows.push(["", "", ""]);
+    (bs?.liabilities ?? []).forEach((l: any) =>
+      rows.push(["Liability", l.accountName, String(l.balance)]));
+    rows.push(["", "Total Liabilities", String(totalLib)]);
+    rows.push(["", "", ""]);
+    (bs?.equity ?? []).forEach((e: any) =>
+      rows.push(["Equity", e.accountName, String(e.balance)]));
+    rows.push(["", "Total Equity", String(totalEq)]);
+    rows.push(["", "", ""]);
+    rows.push(["", "Balanced?", balanced ? "Yes" : "No"]);
+    rows.push(["", "As of", dateLbl()]);
+    rows.push(["", "Reference", refNo("BS")]);
+    downloadCSV(`balance-sheet-${new Date().toISOString().slice(0,10)}.csv`, rows);
+    showToast("Balance Sheet CSV downloaded", <FileText size={13} color="#4ade80" />);
+  };
+
+  const csvEquity = () => {
+    const rows: string[][] = [
+      ["Item", "Amount (PHP)"],
+      ["Beginning Capital / Equity", String(beginEq)],
+      ["Add: Additional Investments", String(addInvest)],
+      ["Add: Net Income", String(netInc)],
+      ["Capital Before Withdrawals", String(beginEq + addInvest + netInc)],
+      ["Less: Withdrawals / Drawings", String(withdrawals)],
+      ["Ending Owner's Equity", String(endEq)],
+      ["", ""],
+      ["Period", dateLbl()],
+      ["Reference", refNo("OE")],
+    ];
+    downloadCSV(`owners-equity-${new Date().toISOString().slice(0,10)}.csv`, rows);
+    showToast("Owner's Equity CSV downloaded", <FileText size={13} color="#4ade80" />);
+  };
+
+  const csvCashflow = () => {
+    const rows: string[][] = [["Section", "Description", "Amount (PHP)"]];
+    if (cf?.operatingItems?.length > 0) {
+      cf.operatingItems.forEach((o: any) =>
+        rows.push(["Operating", o.description, String(o.amount)]));
+    } else {
+      rows.push(["Operating", "Net Income (base of operations)", String(netInc)]);
+    }
+    rows.push(["", "Net Cash from Operations", String(cfOps || netInc)]);
+    rows.push(["", "", ""]);
+    (cf?.investingItems ?? []).forEach((o: any) =>
+      rows.push(["Investing", o.description, String(o.amount)]));
+    rows.push(["", "Net Cash from Investing", String(cfInv)]);
+    rows.push(["", "", ""]);
+    (cf?.financingItems ?? []).forEach((o: any) =>
+      rows.push(["Financing", o.description, String(o.amount)]));
+    rows.push(["", "Net Cash from Financing", String(cfFin)]);
+    rows.push(["", "", ""]);
+    rows.push(["", "Beginning Cash Balance", String(begCash)]);
+    rows.push(["", "Ending Cash Balance", String(endCash)]);
+    rows.push(["", "Period", dateLbl()]);
+    rows.push(["", "Reference", refNo("CF")]);
+    downloadCSV(`cash-flow-${new Date().toISOString().slice(0,10)}.csv`, rows);
+    showToast("Cash Flow CSV downloaded", <FileText size={13} color="#4ade80" />);
+  };
+
+  const tabTitles: Record<string, string> = {
+    income: "Income Statement", balance: "Balance Sheet",
+    equity: "Statement of Owner's Equity", cashflow: "Statement of Cash Flow",
+  };
+
+  const handlePdf = () => {
+    printAsPDF(tabTitles[tab] ?? "Financial Report");
+    showToast("Print dialog opened — Save as PDF", <Printer size={13} color="#fb923c" />);
+  };
+
+  const handleShare = () => {
+    copyShareLink(tab).then(() =>
+      showToast("Report link copied to clipboard", <Share2 size={13} color="#c084fc" />)
+    );
+  };
 
   return (
     <div className="rp">
@@ -377,10 +805,18 @@ export default function Reports() {
             Financial Reports
           </div>
           <h1 className="rp-title">Reports</h1>
-          <p className="rp-sub">Income Statement &amp; Balance Sheet — {period()}</p>
+          <p className="rp-sub">Four Financial Statements — {period()}</p>
         </div>
         <div className="rp-actions">
-          <button className="rp-btn" onClick={() => window.print()}><Printer size={12}/> Print</button>
+          <ExportDropdown
+            tab={tab}
+            onCsvIncome={csvIncome}
+            onCsvBalance={csvBalance}
+            onCsvEquity={csvEquity}
+            onCsvCashflow={csvCashflow}
+            onPdf={handlePdf}
+            onShare={handleShare}
+          />
           <button className="rp-btn" onClick={refetchAll}><RefreshCw size={12}/> Refresh</button>
         </div>
       </div>
@@ -394,6 +830,12 @@ export default function Reports() {
           <button className={`rp-tab ${tab==="balance"?"active":""}`} onClick={()=>setTab("balance")}>
             <Scale size={13}/> Balance Sheet
           </button>
+          <button className={`rp-tab ${tab==="equity"?"active":""}`} onClick={()=>setTab("equity")}>
+            <Users size={13}/> Owner's Equity
+          </button>
+          <button className={`rp-tab ${tab==="cashflow"?"active":""}`} onClick={()=>setTab("cashflow")}>
+            <ArrowRightLeft size={13}/> Cash Flow
+          </button>
         </div>
       </div>
 
@@ -404,7 +846,6 @@ export default function Reports() {
         {tab === "income" && (
           <div className="rp-paper-wrap">
             <div className="rp-paper">
-
               <div className="rp-paper-band">
                 <div className="rp-paper-band-bg" />
                 <div className="rp-paper-band-noise" />
@@ -419,7 +860,6 @@ export default function Reports() {
                 </div>
               </div>
               <div className="rp-band-divider" />
-
               <div className="rp-paper-body">
                 {incLoad ? <Shimmer n={5} /> : (
                   <>
@@ -428,17 +868,13 @@ export default function Reports() {
                       ? inc.revenues.map((r:any, i:number) => <Item key={i} name={r.accountName} amount={r.amount} />)
                       : <p className="rp-item-empty">No revenue entries recorded</p>}
                     <Subtotal label="Total Revenue" value={totalRev} color={TYPE_META.REVENUE.text} />
-
                     <div style={{ height: 8 }} />
-
                     <SecHd label="Expenses" dot={TYPE_META.EXPENSE.dot} color={TYPE_META.EXPENSE.text} />
                     {inc?.expenses?.length > 0
                       ? inc.expenses.map((e:any, i:number) => <Item key={i} name={e.accountName} amount={e.amount} />)
                       : <p className="rp-item-empty">No expense entries recorded</p>}
                     <Subtotal label="Total Expenses" value={totalExp} color={TYPE_META.EXPENSE.text} />
-
                     <div style={{ height: 4 }} />
-
                     <div className={`rp-grand ${netInc>=0?"pos":"neg"}`}>
                       <div className="rp-grand-inner">
                         <div className="rp-grand-left">
@@ -455,9 +891,7 @@ export default function Reports() {
                     </div>
                   </>
                 )}
-
                 <hr className="rp-dashed-hr" />
-
                 <div className="rp-paper-foot">
                   <div className="rp-foot-col">
                     <span className="rp-foot-label">Generated</span>
@@ -480,7 +914,6 @@ export default function Reports() {
         {tab === "balance" && (
           <div className="rp-paper-wrap">
             <div className="rp-paper" style={{ maxWidth:700 }}>
-
               <div className="rp-paper-band">
                 <div className="rp-paper-band-bg" style={{ background:"linear-gradient(145deg,#1a1a3e 0%,#2d2060 45%,#1e1a50 75%,#160e3a 100%)" }} />
                 <div className="rp-paper-band-noise" />
@@ -495,7 +928,6 @@ export default function Reports() {
                 </div>
               </div>
               <div className="rp-band-divider" />
-
               <div className="rp-paper-body">
                 {bsLoad ? <Shimmer n={6} /> : (
                   <>
@@ -513,9 +945,7 @@ export default function Reports() {
                           ? bs.liabilities.map((l:any, i:number) => <Item key={i} name={l.accountName} amount={l.balance} />)
                           : <p className="rp-item-empty">No liability accounts</p>}
                         <Subtotal label="Total Liabilities" value={totalLib} color={TYPE_META.LIABILITY.text} />
-
                         <div style={{ height: 10 }} />
-
                         <SecHd label="Equity" dot={TYPE_META.EQUITY.dot} color={TYPE_META.EQUITY.text} />
                         {bs?.equity?.length > 0
                           ? bs.equity.map((e:any, i:number) => <Item key={i} name={e.accountName} amount={e.balance} />)
@@ -523,9 +953,7 @@ export default function Reports() {
                         <Subtotal label="Total Equity" value={totalEq} color={TYPE_META.EQUITY.text} />
                       </div>
                     </div>
-
                     <div style={{ height: 4 }} />
-
                     <div className={`rp-grand ${balanced?"ok":"bad"}`}>
                       <div className="rp-grand-inner">
                         <div className="rp-grand-left">
@@ -542,9 +970,148 @@ export default function Reports() {
                     </div>
                   </>
                 )}
-
                 <hr className="rp-dashed-hr" />
+                <div className="rp-paper-foot">
+                  <div className="rp-foot-col">
+                    <span className="rp-foot-label">Generated</span>
+                    <span className="rp-foot-val">{dateLbl()}</span>
+                  </div>
+                  <div className="rp-foot-barcode">
+                    {bars.map((h,i) => <span key={i} style={{ height:`${h}px` }} />)}
+                  </div>
+                  <div className="rp-foot-col" style={{ alignItems:"flex-end" }}>
+                    <span className="rp-foot-label">Reference</span>
+                    <span className="rp-foot-val">{ref}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
+        {/* ══ OWNER'S EQUITY ══ */}
+        {tab === "equity" && (
+          <div className="rp-paper-wrap">
+            <div className="rp-paper">
+              <div className="rp-paper-band">
+                <div className="rp-paper-band-bg" style={{ background:"linear-gradient(145deg,#064e3b 0%,#065f46 45%,#047857 75%,#065f46 100%)" }} />
+                <div className="rp-paper-band-noise" />
+                <div className="rp-paper-band-orb" style={{ background:"radial-gradient(circle,rgba(52,211,153,0.35) 0%,transparent 65%)" }} />
+                <div className="rp-paper-band-orb2" style={{ background:"radial-gradient(circle,rgba(16,185,129,0.25) 0%,transparent 65%)" }} />
+                <div className="rp-paper-band-orb3" style={{ background:"radial-gradient(circle,rgba(251,191,36,0.12) 0%,transparent 65%)" }} />
+                <div className="rp-paper-band-content">
+                  <div className="rp-paper-icon-wrap"><Users size={22} color="#fff" /></div>
+                  <div className="rp-paper-badge">Owner's Equity</div>
+                  <h2 className="rp-paper-heading">Statement of Owner's Equity</h2>
+                  <p className="rp-paper-period">For the period ended {dateLbl()}</p>
+                </div>
+              </div>
+              <div className="rp-band-divider" />
+              <div className="rp-paper-body">
+                {eqLoad ? <Shimmer n={5} /> : (
+                  <>
+                    <SecHd label="Owner's Equity" dot={TYPE_META.EQUITY.dot} color={TYPE_META.EQUITY.text} />
+                    <Item name="Beginning Capital / Equity" amount={beginEq} />
+                    <Item name="Add: Additional Investments" amount={addInvest} />
+                    <Item name="Add: Net Income" amount={netInc} />
+                    <Subtotal label="Capital Before Withdrawals" value={beginEq + addInvest + netInc} color={TYPE_META.EQUITY.text} />
+                    <div style={{ height: 8 }} />
+                    <SecHd label="Deductions" dot={TYPE_META.EXPENSE.dot} color={TYPE_META.EXPENSE.text} />
+                    <Item name="Less: Withdrawals / Drawings" amount={withdrawals} />
+                    <Subtotal label="Total Deductions" value={withdrawals} color={TYPE_META.EXPENSE.text} />
+                    <div style={{ height: 4 }} />
+                    <div className={`rp-grand ${endEq >= beginEq ? "pos" : "neg"}`}>
+                      <div className="rp-grand-inner">
+                        <div className="rp-grand-left">
+                          <div className="rp-grand-icon" style={{ background: endEq >= beginEq ? "rgba(5,150,105,.15)" : "rgba(220,38,38,.15)" }}>
+                            <Users size={15} />
+                          </div>
+                          <div>
+                            <div className="rp-grand-lbl">Ending Owner's Equity</div>
+                            <div className="rp-grand-sub">Beginning + Investments + Net Income − Withdrawals</div>
+                          </div>
+                        </div>
+                        <div className="rp-grand-val">{fmt(endEq)}</div>
+                      </div>
+                    </div>
+                  </>
+                )}
+                <hr className="rp-dashed-hr" />
+                <div className="rp-paper-foot">
+                  <div className="rp-foot-col">
+                    <span className="rp-foot-label">Generated</span>
+                    <span className="rp-foot-val">{dateLbl()}</span>
+                  </div>
+                  <div className="rp-foot-barcode">
+                    {bars.map((h,i) => <span key={i} style={{ height:`${h}px` }} />)}
+                  </div>
+                  <div className="rp-foot-col" style={{ alignItems:"flex-end" }}>
+                    <span className="rp-foot-label">Reference</span>
+                    <span className="rp-foot-val">{ref}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══ CASH FLOW ══ */}
+        {tab === "cashflow" && (
+          <div className="rp-paper-wrap">
+            <div className="rp-paper">
+              <div className="rp-paper-band">
+                <div className="rp-paper-band-bg" style={{ background:"linear-gradient(145deg,#1e3a5f 0%,#1a4971 45%,#155e8a 75%,#1a4971 100%)" }} />
+                <div className="rp-paper-band-noise" />
+                <div className="rp-paper-band-orb" style={{ background:"radial-gradient(circle,rgba(56,189,248,0.35) 0%,transparent 65%)" }} />
+                <div className="rp-paper-band-orb2" style={{ background:"radial-gradient(circle,rgba(14,165,233,0.25) 0%,transparent 65%)" }} />
+                <div className="rp-paper-band-orb3" style={{ background:"radial-gradient(circle,rgba(251,191,36,0.12) 0%,transparent 65%)" }} />
+                <div className="rp-paper-band-content">
+                  <div className="rp-paper-icon-wrap"><ArrowRightLeft size={22} color="#fff" /></div>
+                  <div className="rp-paper-badge">Cash Flow</div>
+                  <h2 className="rp-paper-heading">Statement of Cash Flow</h2>
+                  <p className="rp-paper-period">For the period ended {dateLbl()}</p>
+                </div>
+              </div>
+              <div className="rp-band-divider" />
+              <div className="rp-paper-body">
+                {cfLoad ? <Shimmer n={7} /> : (
+                  <>
+                    <SecHd label="Operating Activities" dot={TYPE_META.REVENUE.dot} color={TYPE_META.REVENUE.text} />
+                    {cf?.operatingItems?.length > 0
+                      ? cf.operatingItems.map((o:any, i:number) => <Item key={i} name={o.description} amount={o.amount} />)
+                      : <Item name="Net Income (base of operations)" amount={netInc} />}
+                    <Subtotal label="Net Cash from Operations" value={cfOps || netInc} color={TYPE_META.REVENUE.text} />
+                    <div style={{ height: 8 }} />
+                    <SecHd label="Investing Activities" dot={TYPE_META.ASSET.dot} color={TYPE_META.ASSET.text} />
+                    {cf?.investingItems?.length > 0
+                      ? cf.investingItems.map((o:any, i:number) => <Item key={i} name={o.description} amount={o.amount} />)
+                      : <p className="rp-item-empty">No investing activities recorded</p>}
+                    <Subtotal label="Net Cash from Investing" value={cfInv} color={TYPE_META.ASSET.text} />
+                    <div style={{ height: 8 }} />
+                    <SecHd label="Financing Activities" dot={TYPE_META.LIABILITY.dot} color={TYPE_META.LIABILITY.text} />
+                    {cf?.financingItems?.length > 0
+                      ? cf.financingItems.map((o:any, i:number) => <Item key={i} name={o.description} amount={o.amount} />)
+                      : <p className="rp-item-empty">No financing activities recorded</p>}
+                    <Subtotal label="Net Cash from Financing" value={cfFin} color={TYPE_META.LIABILITY.text} />
+                    <div style={{ height: 4 }} />
+                    <Item name="Beginning Cash Balance" amount={begCash} />
+                    <div className={`rp-grand ${netCash >= 0 ? "pos" : "neg"}`}>
+                      <div className="rp-grand-inner">
+                        <div className="rp-grand-left">
+                          <div className="rp-grand-icon" style={{ background: netCash >= 0 ? "rgba(5,150,105,.15)" : "rgba(220,38,38,.15)" }}>
+                            <ArrowRightLeft size={15} />
+                          </div>
+                          <div>
+                            <div className="rp-grand-lbl">Ending Cash Balance</div>
+                            <div className="rp-grand-sub">Beginning Cash + Net Cash Change</div>
+                          </div>
+                        </div>
+                        <div className="rp-grand-val">{fmt(endCash)}</div>
+                      </div>
+                    </div>
+                  </>
+                )}
+                <hr className="rp-dashed-hr" />
                 <div className="rp-paper-foot">
                   <div className="rp-foot-col">
                     <span className="rp-foot-label">Generated</span>
@@ -563,6 +1130,9 @@ export default function Reports() {
           </div>
         )}
       </div>
+
+      {/* TOAST */}
+      {toast && <Toast message={toast.msg} icon={toast.icon} />}
     </div>
   );
 }

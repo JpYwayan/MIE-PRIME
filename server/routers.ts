@@ -24,22 +24,33 @@ export const appRouter = router({
     getCompanyInfo: protectedProcedure.query(async ({ ctx }) => {
       const info = await db.getUserCompanyInfo(ctx.user.id);
       return {
-        companyName: info?.companyName ?? null,
-        companyLogo: info?.companyLogo ?? null,
+        companyName:     info?.companyName     ?? null,
+        companyLogo:     info?.companyLogo     ?? null,
+        businessAddress: info?.businessAddress ?? null,
+        businessType:    info?.businessType    ?? null,
       };
     }),
 
     updateCompanyInfo: protectedProcedure
       .input(
         z.object({
-          companyName: z.string().max(255).optional(),
-          companyLogo: z.string().nullable().optional(),
+          companyName:     z.string().max(255).optional(),
+          companyLogo:     z.string().nullable().optional(),
+          businessAddress: z.string().nullable().optional(),
+          businessType:    z.string().max(64).nullable().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const updates: { companyName?: string; companyLogo?: string | null } = {};
-        if (input.companyName !== undefined) updates.companyName = input.companyName;
-        if (input.companyLogo !== undefined) updates.companyLogo = input.companyLogo;
+        const updates: {
+          companyName?: string;
+          companyLogo?: string | null;
+          businessAddress?: string | null;
+          businessType?: string | null;
+        } = {};
+        if (input.companyName     !== undefined) updates.companyName     = input.companyName;
+        if (input.companyLogo     !== undefined) updates.companyLogo     = input.companyLogo;
+        if (input.businessAddress !== undefined) updates.businessAddress = input.businessAddress;
+        if (input.businessType    !== undefined) updates.businessType    = input.businessType;
         await db.updateUserCompanyInfo(ctx.user.id, updates);
         return { success: true };
       }),
@@ -185,7 +196,7 @@ export const appRouter = router({
           quantity: input.quantity,
           status: "COMPLETED",
         });
-        const transactionId = (transactionResult as any)?.insertId || 0;
+        const transactionId = transactionResult.id;
 
         // Create journal entries (debit and credit)
         await db.createJournalEntry({
@@ -384,6 +395,138 @@ export const appRouter = router({
           isBalanced: Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01,
         };
       }),
+
+    ownerEquity: protectedProcedure.query(async ({ ctx }) => {
+      // Same 2-query pattern — no extra DB round-trips
+      const [accounts, allEntries] = await Promise.all([
+        db.getAccountsByUserId(ctx.user.id),
+        db.getJournalEntriesByUserId(ctx.user.id),
+      ]);
+
+      const sumAccount = (type: string) =>
+        accounts
+          .filter((a) => a.type === type)
+          .reduce((total, account) => {
+            const amount = allEntries
+              .filter((e) => e.accountId === account.id)
+              .reduce((s, e) => s + parseFloat(e.amount.toString()), 0);
+            return total + amount;
+          }, 0);
+
+      const totalRevenue  = sumAccount("REVENUE");
+      const totalExpenses = sumAccount("EXPENSE");
+      const netIncome     = totalRevenue - totalExpenses;
+
+      // EQUITY accounts: credits increase equity, debits decrease it
+      const equityAccounts = accounts.filter((a) => a.type === "EQUITY");
+
+      // Beginning equity = sum of all equity account credit entries
+      const beginningEquity = equityAccounts.reduce((total, account) => {
+        const credits = allEntries
+          .filter((e) => e.accountId === account.id && e.type === "CREDIT")
+          .reduce((s, e) => s + parseFloat(e.amount.toString()), 0);
+        return total + credits;
+      }, 0);
+
+      // Withdrawals/drawings = debit entries on equity accounts
+      const withdrawals = equityAccounts.reduce((total, account) => {
+        const debits = allEntries
+          .filter((e) => e.accountId === account.id && e.type === "DEBIT")
+          .reduce((s, e) => s + parseFloat(e.amount.toString()), 0);
+        return total + debits;
+      }, 0);
+
+      // Additional investments = equity credits beyond the initial equity balance
+      // (same as beginningEquity for single-entry equity — kept separate for clarity)
+      const additionalInvestments = 0;
+
+      const endingEquity = beginningEquity + additionalInvestments + netIncome - withdrawals;
+
+      return {
+        beginningEquity,
+        additionalInvestments,
+        withdrawals,
+        netIncome,
+        endingEquity,
+      };
+    }),
+
+    cashFlow: protectedProcedure.query(async ({ ctx }) => {
+      // Same 2-query pattern — no extra DB round-trips
+      const [accounts, allEntries] = await Promise.all([
+        db.getAccountsByUserId(ctx.user.id),
+        db.getJournalEntriesByUserId(ctx.user.id),
+      ]);
+
+      const sumType = (type: string) =>
+        accounts
+          .filter((a) => a.type === type)
+          .reduce((total, account) => {
+            const amount = allEntries
+              .filter((e) => e.accountId === account.id)
+              .reduce((s, e) => s + parseFloat(e.amount.toString()), 0);
+            return total + amount;
+          }, 0);
+
+      const totalRevenue  = sumType("REVENUE");
+      const totalExpenses = sumType("EXPENSE");
+      const netIncome     = totalRevenue - totalExpenses;
+
+      // Operating: net income + changes in current assets/liabilities
+      const operatingItems = [
+        { description: "Net Income", amount: netIncome },
+      ];
+
+      // Investing: asset account movements (non-cash assets)
+      const assetAccounts = accounts.filter((a) => a.type === "ASSET");
+      const investingItems = assetAccounts
+        .map((account) => {
+          const debits = allEntries
+            .filter((e) => e.accountId === account.id && e.type === "DEBIT")
+            .reduce((s, e) => s + parseFloat(e.amount.toString()), 0);
+          const credits = allEntries
+            .filter((e) => e.accountId === account.id && e.type === "CREDIT")
+            .reduce((s, e) => s + parseFloat(e.amount.toString()), 0);
+          const net = credits - debits; // outflow is negative
+          return { description: account.name, amount: net };
+        })
+        .filter((item) => item.amount !== 0);
+
+      // Financing: equity and liability account movements
+      const financingAccounts = accounts.filter(
+        (a) => a.type === "LIABILITY" || a.type === "EQUITY"
+      );
+      const financingItems = financingAccounts
+        .map((account) => {
+          const debits = allEntries
+            .filter((e) => e.accountId === account.id && e.type === "DEBIT")
+            .reduce((s, e) => s + parseFloat(e.amount.toString()), 0);
+          const credits = allEntries
+            .filter((e) => e.accountId === account.id && e.type === "CREDIT")
+            .reduce((s, e) => s + parseFloat(e.amount.toString()), 0);
+          const net = credits - debits;
+          return { description: account.name, amount: net };
+        })
+        .filter((item) => item.amount !== 0);
+
+      const netCashFromOperations = operatingItems.reduce((s, i) => s + i.amount, 0);
+      const netCashFromInvesting  = investingItems.reduce((s, i) => s + i.amount, 0);
+      const netCashFromFinancing  = financingItems.reduce((s, i) => s + i.amount, 0);
+
+      const beginningCash = 0; // no prior-period data available
+      const endingCash    = beginningCash + netCashFromOperations + netCashFromInvesting + netCashFromFinancing;
+
+      return {
+        operatingItems,
+        investingItems,
+        financingItems,
+        netCashFromOperations,
+        netCashFromInvesting,
+        netCashFromFinancing,
+        beginningCash,
+        endingCash,
+      };
+    }),
   }),
 });
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   HelpCircle, Mail, MessageCircle, BookOpen,
   ChevronDown, Search, ArrowRight,
-  FileText, BarChart2, RefreshCw, ShieldCheck,
+  FileText, BarChart2, RefreshCw, ShieldCheck, X,
 } from "lucide-react";
 
 const css = `
@@ -83,7 +83,7 @@ const css = `
   .hp-quick-arrow { margin-top:auto; display:flex; align-items:center; gap:4px; font-size:11px; font-weight:700; color:var(--blue); }
 
   /* TWO-COL — stretch so both cards match height */
-  .hp-cols { display:grid; grid-template-columns:1fr 360px; gap:18px; align-items:stretch; }
+  .hp-cols { display:grid; grid-template-columns:1fr min(360px,36%); gap:18px; align-items:stretch; }
 
   /* CARD BASE */
   .hp-card {
@@ -158,10 +158,295 @@ const css = `
     display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:20px; margin-top:6px;
     font-size:9.5px; font-weight:700; font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.04em;
   }
-  .hp-contact-pill.online { background:#dcfce7; color:#15803d; }
-  .hp-contact-pill.soon   { background:#fef3c7; color:#b45309; }
-  .hp-pill-dot { width:4px; height:4px; border-radius:50%; background:currentColor; }
+  /* GUIDE MODAL */
+  .hp-overlay {
+    position:fixed; inset:0; z-index:1000;
+    background:rgba(10,15,30,0.55); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+    animation:fadeUp .18s ease both;
+  }
+  .hp-modal {
+    background:#fff; border-radius:20px; width:100%; max-width:680px;
+    max-height:88vh; display:flex; flex-direction:column;
+    box-shadow:0 24px 80px rgba(0,0,0,0.28),0 0 0 1px rgba(0,0,0,0.06);
+    animation:fadeUp .22s cubic-bezier(.22,.68,0,1.1) both;
+  }
+  .hp-modal-hd {
+    padding:24px 28px 20px; border-bottom:1px solid var(--border2);
+    display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-shrink:0;
+  }
+  .hp-modal-icon { width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .hp-modal-eyebrow { font-size:9.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-family:'Space Mono',monospace; color:var(--ink4); margin-bottom:4px; }
+  .hp-modal-title { font-size:19px; font-weight:800; color:var(--ink); letter-spacing:-.03em; }
+  .hp-modal-close {
+    width:32px; height:32px; border-radius:9px; border:1.5px solid var(--border);
+    background:var(--surface2); color:var(--ink4);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:all .15s; flex-shrink:0;
+  }
+  .hp-modal-close:hover { background:var(--surface3); color:var(--ink); border-color:var(--border); }
+  .hp-modal-body { padding:24px 28px 28px; overflow-y:auto; display:flex; flex-direction:column; gap:20px; }
+  .hp-guide-section-title {
+    font-size:11px; font-weight:700; color:var(--blue); letter-spacing:.12em;
+    text-transform:uppercase; font-family:'Space Mono',monospace;
+    margin-bottom:8px;
+  }
+  .hp-guide-p { font-size:13.5px; color:var(--ink3); line-height:1.75; margin:0; }
+  .hp-guide-steps { display:flex; flex-direction:column; gap:10px; }
+  .hp-guide-step {
+    display:flex; gap:13px; align-items:flex-start;
+    padding:13px 16px; background:var(--surface2); border-radius:11px;
+    border:1px solid var(--border2);
+  }
+  .hp-guide-step-num {
+    width:24px; height:24px; border-radius:7px; flex-shrink:0;
+    background:var(--blue); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:800; font-family:'Space Mono',monospace;
+  }
+  .hp-guide-step-text { font-size:13px; color:var(--ink3); line-height:1.6; padding-top:3px; }
+  .hp-guide-step-text strong { color:var(--ink); font-weight:700; }
+  .hp-guide-tip {
+    padding:13px 16px; background:rgba(79,99,210,0.05);
+    border:1px solid rgba(79,99,210,0.14); border-radius:11px;
+    font-size:12.5px; color:var(--ink3); line-height:1.6;
+  }
+  .hp-guide-tip strong { color:var(--blue); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width:900px) {
+    .hp-cols { grid-template-columns:1fr; }
+    .hp-quick-grid { grid-template-columns:repeat(2,1fr); }
+  }
+  @media (max-width:640px) {
+    .hp-header { padding:16px 16px 0; }
+    .hp-body   { padding:14px 16px 24px; gap:14px; }
+    .hp-title  { font-size:22px; }
+    .hp-search-hero { padding:20px 18px 18px; }
+    .hp-search-heading { font-size:17px; }
+    .hp-card-hd { padding:14px 16px; }
+    .hp-faq-toolbar { padding:10px 16px; }
+    .hp-faq-trigger { padding:13px 16px; }
+    .hp-faq-body { padding:0 16px 14px; }
+    .hp-contact-item { padding:14px 16px; }
+    .hp-modal-hd  { padding:18px 20px 14px; }
+    .hp-modal-body{ padding:18px 20px 20px; }
+    .hp-modal-title { font-size:16px; }
+  }
+  @media (max-width:480px) {
+    .hp-quick-grid { grid-template-columns:1fr 1fr; }
+    .hp-quick-card { padding:14px 14px 12px; gap:8px; }
+    .hp-quick-desc { display:none; }
+    .hp-overlay { padding:12px; align-items:flex-end; }
+    .hp-modal { border-radius:16px 16px 0 0; max-height:92vh; }
+  }
+  @media (max-width:380px) {
+    .hp-quick-grid { grid-template-columns:1fr; }
+    .hp-search-hero { padding:16px 14px 14px; }
+  }
 `;
+
+const GUIDE_CONTENT: Record<string, { sections: { title: string; content: React.ReactNode }[] }> = {
+  "Journal Guide": {
+    sections: [
+      {
+        title: "What is a Journal Entry?",
+        content: <p className="hp-guide-p">Every financial transaction in MIE Prime is recorded as a journal entry using <strong>double-entry bookkeeping</strong> — every entry has at least one debit and one credit, and the two sides always balance. The journal is the chronological record of all your transactions before they're posted to individual account ledgers.</p>,
+      },
+      {
+        title: "How to Create a Journal Entry",
+        content: (
+          <div className="hp-guide-steps">
+            {[
+              { n:"1", t:<><strong>Click "New Transaction"</strong> in the sidebar to open the transaction wizard.</> },
+              { n:"2", t:<><strong>Select the debit account</strong> — the account that receives value (e.g. Cash, Equipment).</> },
+              { n:"3", t:<><strong>Select the credit account</strong> — the account that gives value (e.g. Revenue, Loans Payable).</> },
+              { n:"4", t:<><strong>Enter the amount, date, and description</strong> — be specific so your audit trail is clear.</> },
+              { n:"5", t:<><strong>Submit</strong> — the entry instantly appears in your Journal, Ledger, and Trial Balance.</> },
+            ].map(s => (
+              <div className="hp-guide-step" key={s.n}>
+                <span className="hp-guide-step-num">{s.n}</span>
+                <span className="hp-guide-step-text">{s.t}</span>
+              </div>
+            ))}
+          </div>
+        ),
+      },
+      {
+        title: "Common Account Pairings",
+        content: (
+          <div className="hp-guide-steps">
+            {[
+              { n:"→", t:<><strong>Cash sale:</strong> Debit Cash · Credit Sales Revenue</> },
+              { n:"→", t:<><strong>Purchase on credit:</strong> Debit Supplies/Equipment · Credit Accounts Payable</> },
+              { n:"→", t:<><strong>Owner investment:</strong> Debit Cash · Credit Owner's Equity/Capital</> },
+              { n:"→", t:<><strong>Pay an expense:</strong> Debit Expense Account · Credit Cash</> },
+            ].map((s, i) => (
+              <div className="hp-guide-step" key={i}>
+                <span className="hp-guide-step-num" style={{background:"var(--blue3)",color:"var(--blue)"}}>{s.n}</span>
+                <span className="hp-guide-step-text">{s.t}</span>
+              </div>
+            ))}
+          </div>
+        ),
+      },
+      {
+        title: "💡 Pro Tip",
+        content: <div className="hp-guide-tip"><strong>Tip:</strong> Transactions cannot be deleted after posting — this protects your audit trail. To correct a mistake, create a reversing entry with the same accounts and amount, then record the correct entry.</div>,
+      },
+    ],
+  },
+  "Reports Explainer": {
+    sections: [
+      {
+        title: "Your Four Financial Statements",
+        content: <p className="hp-guide-p">MIE Prime generates four standard financial statements required for any business. Together they give a complete picture of your financial health — profitability, position, equity changes, and cash movement.</p>,
+      },
+      {
+        title: "Income Statement",
+        content: (
+          <div className="hp-guide-steps">
+            {[
+              { n:"₱", t:<><strong>What it shows:</strong> Revenue earned minus expenses incurred over a period — your net income or net loss.</> },
+              { n:"→", t:<><strong>Formula:</strong> Net Income = Total Revenue − Total Expenses</> },
+              { n:"→", t:<><strong>Use it to:</strong> See if your business is profitable and which expenses are eating into margins.</> },
+            ].map((s, i) => (
+              <div className="hp-guide-step" key={i}>
+                <span className="hp-guide-step-num" style={{background:"rgba(5,150,105,.12)",color:"#065f46"}}>{s.n}</span>
+                <span className="hp-guide-step-text">{s.t}</span>
+              </div>
+            ))}
+          </div>
+        ),
+      },
+      {
+        title: "Balance Sheet",
+        content: (
+          <div className="hp-guide-steps">
+            {[
+              { n:"=", t:<><strong>What it shows:</strong> A snapshot of what you own (assets), what you owe (liabilities), and owner's equity at a specific date.</> },
+              { n:"→", t:<><strong>Formula:</strong> Assets = Liabilities + Equity (must always balance)</> },
+              { n:"→", t:<><strong>Use it to:</strong> Assess your net worth and ability to meet obligations.</> },
+            ].map((s, i) => (
+              <div className="hp-guide-step" key={i}>
+                <span className="hp-guide-step-num" style={{background:"rgba(79,99,210,.1)",color:"var(--blue)"}}>{s.n}</span>
+                <span className="hp-guide-step-text">{s.t}</span>
+              </div>
+            ))}
+          </div>
+        ),
+      },
+      {
+        title: "Owner's Equity & Cash Flow",
+        content: <p className="hp-guide-p">The <strong>Statement of Owner's Equity</strong> tracks changes in capital — investments added, net income earned, and withdrawals taken. The <strong>Statement of Cash Flow</strong> shows where cash actually came from and went (operating, investing, and financing activities) — separate from paper profit.</p>,
+      },
+      {
+        title: "💡 Pro Tip",
+        content: <div className="hp-guide-tip"><strong>Tip:</strong> Use the <strong>Print</strong> button on each report to generate a clean PDF with a reference number, suitable for sharing with your accountant or submitting to the BIR.</div>,
+      },
+    ],
+  },
+  "Reconciliation": {
+    sections: [
+      {
+        title: "What is Reconciliation?",
+        content: <p className="hp-guide-p">Reconciliation is the process of matching your MIE Prime records against an external statement (bank statement, GCash history, cash register) to confirm they agree. Differences reveal missing entries, duplicate records, or bank errors.</p>,
+      },
+      {
+        title: "Step-by-Step Reconciliation",
+        content: (
+          <div className="hp-guide-steps">
+            {[
+              { n:"1", t:<><strong>Download your bank or GCash statement</strong> for the period you want to reconcile.</> },
+              { n:"2", t:<><strong>Go to Ledger in MIE Prime</strong> and open the account you're reconciling (e.g. Cash).</> },
+              { n:"3", t:<><strong>Compare each line item</strong> — check off transactions that appear in both your ledger and the statement.</> },
+              { n:"4", t:<><strong>Identify differences</strong> — outstanding checks, deposits in transit, bank fees not yet recorded.</> },
+              { n:"5", t:<><strong>Record missing entries</strong> — add any transactions that appear on the bank statement but not in MIE Prime.</> },
+              { n:"6", t:<><strong>Confirm balances match</strong> — your adjusted ledger balance should equal the statement ending balance.</> },
+            ].map(s => (
+              <div className="hp-guide-step" key={s.n}>
+                <span className="hp-guide-step-num">{s.n}</span>
+                <span className="hp-guide-step-text">{s.t}</span>
+              </div>
+            ))}
+          </div>
+        ),
+      },
+      {
+        title: "Common Reconciling Items",
+        content: (
+          <div className="hp-guide-steps">
+            {[
+              { n:"!", t:<><strong>Outstanding checks:</strong> Issued in MIE Prime but not yet cleared the bank</> },
+              { n:"!", t:<><strong>Deposits in transit:</strong> Recorded in MIE Prime but not yet posted by the bank</> },
+              { n:"!", t:<><strong>Bank charges:</strong> Fees deducted by the bank not yet entered in MIE Prime</> },
+              { n:"!", t:<><strong>Interest earned:</strong> Credited by the bank but not yet recorded</> },
+            ].map((s, i) => (
+              <div className="hp-guide-step" key={i}>
+                <span className="hp-guide-step-num" style={{background:"rgba(217,119,6,.1)",color:"#92400e"}}>{s.n}</span>
+                <span className="hp-guide-step-text">{s.t}</span>
+              </div>
+            ))}
+          </div>
+        ),
+      },
+      {
+        title: "💡 Pro Tip",
+        content: <div className="hp-guide-tip"><strong>Tip:</strong> Reconcile monthly — it's much easier to catch errors when they're fresh. A 3-month backlog of unreconciled transactions can take hours to untangle.</div>,
+      },
+    ],
+  },
+  "Data & Security": {
+    sections: [
+      {
+        title: "How Your Data is Stored",
+        content: <p className="hp-guide-p">MIE Prime stores all your financial data in a <strong>PostgreSQL database hosted on Supabase</strong> — a SOC 2 Type II certified platform with encryption at rest and in transit. Your data is never shared with third parties or used for advertising.</p>,
+      },
+      {
+        title: "Authentication & Access",
+        content: (
+          <div className="hp-guide-steps">
+            {[
+              { n:"🔐", t:<><strong>Supabase Auth</strong> handles all sign-in. Passwords are hashed with bcrypt and never stored in plain text.</> },
+              { n:"🔐", t:<><strong>Session tokens</strong> are stored in secure, httpOnly cookies — not localStorage — protecting against XSS attacks.</> },
+              { n:"🔐", t:<><strong>All data is scoped to your user ID</strong> — no other user can access your accounts, transactions, or reports.</> },
+            ].map((s, i) => (
+              <div className="hp-guide-step" key={i}>
+                <span className="hp-guide-step-num" style={{background:"rgba(124,58,237,.1)",color:"#6d28d9",fontSize:14}}>{s.n}</span>
+                <span className="hp-guide-step-text">{s.t}</span>
+              </div>
+            ))}
+          </div>
+        ),
+      },
+      {
+        title: "Backups & Data Retention",
+        content: <p className="hp-guide-p">Supabase performs <strong>daily automated backups</strong> of all project data. Your financial records are retained for the life of your account. If you delete your account, all data is permanently removed within 30 days in accordance with data privacy regulations.</p>,
+      },
+      {
+        title: "What You Can Do to Stay Safe",
+        content: (
+          <div className="hp-guide-steps">
+            {[
+              { n:"✓", t:<><strong>Use a strong, unique password</strong> — change it regularly in Account Settings.</> },
+              { n:"✓", t:<><strong>Sign out after each session</strong> on shared or public computers.</> },
+              { n:"✓", t:<><strong>Never share your login credentials</strong> — each team member should have their own account.</> },
+            ].map((s, i) => (
+              <div className="hp-guide-step" key={i}>
+                <span className="hp-guide-step-num" style={{background:"rgba(21,128,61,.1)",color:"#15803d"}}>{s.n}</span>
+                <span className="hp-guide-step-text">{s.t}</span>
+              </div>
+            ))}
+          </div>
+        ),
+      },
+      {
+        title: "💡 Pro Tip",
+        content: <div className="hp-guide-tip"><strong>Tip:</strong> Your company logo is stored as a base64 data URL in the database. Avoid uploading logos larger than 500 KB to keep page load times fast.</div>,
+      },
+    ],
+  },
+};
 
 const FAQS = [
   { category:"Accounting",   question:"What is double-entry bookkeeping?",                answer:"Double-entry bookkeeping is a system where every financial transaction is recorded in at least two accounts — one debit and one credit. The total debits always equal total credits, keeping your books balanced. For example, when you receive cash from a client, you debit Cash and credit Accounts Receivable." },
@@ -189,6 +474,7 @@ function highlight(text: string, q: string) {
 export default function Help() {
   const [open, setOpen] = useState<number | null>(null);
   const [faqQ, setFaqQ] = useState("");
+  const [activeGuide, setActiveGuide] = useState<string | null>(null);
 
   const filtered = FAQS.filter(f =>
     !faqQ ||
@@ -232,7 +518,7 @@ export default function Help() {
         {/* QUICK LINKS */}
         <div className="hp-quick-grid">
           {QUICK_LINKS.map((q, i) => (
-            <div className="hp-quick-card" key={i}>
+            <div className="hp-quick-card" key={i} onClick={() => setActiveGuide(q.label)}>
               <div className="hp-quick-icon" style={{background:q.bg}}>{q.icon}</div>
               <div>
                 <div className="hp-quick-label">{q.label}</div>
@@ -346,6 +632,38 @@ export default function Help() {
 
         </div>
       </div>
+
+      {/* GUIDE MODAL */}
+      {activeGuide && (() => {
+        const guide = GUIDE_CONTENT[activeGuide];
+        const link  = QUICK_LINKS.find(q => q.label === activeGuide)!;
+        return (
+          <div className="hp-overlay" onClick={() => setActiveGuide(null)}>
+            <div className="hp-modal" onClick={e => e.stopPropagation()}>
+              <div className="hp-modal-hd">
+                <div style={{display:"flex", gap:14, alignItems:"flex-start"}}>
+                  <div className="hp-modal-icon" style={{background:link.bg}}>{link.icon}</div>
+                  <div>
+                    <div className="hp-modal-eyebrow">Guide</div>
+                    <div className="hp-modal-title">{activeGuide}</div>
+                  </div>
+                </div>
+                <button className="hp-modal-close" onClick={() => setActiveGuide(null)}>
+                  <X size={14}/>
+                </button>
+              </div>
+              <div className="hp-modal-body">
+                {guide.sections.map((sec, i) => (
+                  <div key={i}>
+                    <div className="hp-guide-section-title">{sec.title}</div>
+                    {sec.content}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -136,7 +136,7 @@ const css = `
   .sl-table-wrap { overflow-x:auto; }
   .sl-table { width:100%; border-collapse:collapse; font-size:12.5px; }
   .sl-table thead tr { background:var(--surface2); border-bottom:2px solid var(--border); }
-  .sl-table th { padding:11px 18px; text-align:left; font-size:10.5px; font-weight:700; color:var(--ink3); letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; }
+  .sl-table th { padding:11px 18px; text-align:left; font-size:10.5px; font-weight:700; color:var(--ink3); letter-spacing:.08em; text-transform:uppercase; white-space:normal; }
   .sl-table th.right { text-align:right; }
   .sl-table td { padding:14px 18px; border-bottom:1px solid var(--border2); vertical-align:middle; }
   .sl-table tbody tr:last-child td { border-bottom:none; }
@@ -168,10 +168,39 @@ const css = `
 
   /* ── RESPONSIVE ── */
   @media (max-width:1100px) { .sl-kpi-row { grid-template-columns:repeat(2,1fr); } .sl-grid2,.sl-grid3 { grid-template-columns:1fr; } }
+  @media (max-width:700px) {
+    /* Card-style table */
+    .sl-table-wrap { overflow-x:hidden; }
+    .sl-table thead { display:none; }
+    .sl-table, .sl-table tbody, .sl-table tr, .sl-table td { display:block; width:100%; }
+    .sl-table tr { padding:12px 18px; border-bottom:1px solid var(--border2); }
+    .sl-table tbody tr:nth-child(even) { background:rgba(249,250,251,0.8); }
+    .sl-table td { padding:2px 0; border:none; text-align:left !important; }
+    .sl-table td::before {
+      content:attr(data-label);
+      display:inline-block; width:72px;
+      font-size:9px; font-weight:700; color:var(--ink4);
+      text-transform:uppercase; letter-spacing:.08em;
+      font-family:'Space Mono',monospace;
+    }
+    .sl-table tfoot { display:block; }
+    .sl-table tfoot tr { padding:12px 18px; border-top:2px solid var(--border); background:rgba(16,185,129,0.04); }
+    .sl-table tfoot td { padding:2px 0; border:none; }
+  }
   @media (max-width:640px) {
     .sl-header { padding:16px 16px 0; }
     .sl-kpi-row { padding:16px 16px 0; grid-template-columns:repeat(2,1fr); }
-    .sl-body { padding:14px 16px 24px; }
+    .sl-body { padding:14px 16px 24px; gap:14px; }
+    .sl-title { font-size:22px; }
+    .sl-card-hd { padding:14px 16px 0; }
+    .sl-rev-legend { padding:0 16px 16px; }
+    .sl-bar-list { padding:0 16px 16px; }
+    .sl-meter-wrap { padding:0 16px 16px; }
+  }
+  @media (max-width:400px) {
+    .sl-kpi-row { grid-template-columns:1fr; }
+    .sl-kpi-meta { display:none; }
+    .sl-header-actions .sl-btn-ghost { display:none; }
   }
 `;
 
@@ -544,19 +573,19 @@ export default function Sales() {
                         const share = totalRevenue > 0 ? ((item.value / totalRevenue) * 100).toFixed(1) : "0.0";
                         return (
                           <tr key={i}>
-                            <td><span className={`sl-rank ${i === 0 ? "top" : ""}`}>#{i + 1}</span></td>
-                            <td>
+                            <td data-label="#"><span className={`sl-rank ${i === 0 ? "top" : ""}`}>#{i + 1}</span></td>
+                            <td data-label="Account">
                               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.color, display: "inline-block", flexShrink: 0 }} />
                                 <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{item.name}</span>
                               </div>
                             </td>
-                            <td className="right">
+                            <td className="right" data-label="Amount">
                               <span style={{ fontFamily: "'Space Mono',monospace", fontWeight: 700, color: "#059669" }}>
                                 {fmtCurrency(item.value)}
                               </span>
                             </td>
-                            <td className="right">
+                            <td className="right" data-label="Share">
                               <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, color: "#4B5563" }}>
                                 {share}%
                               </span>

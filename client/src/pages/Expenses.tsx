@@ -215,10 +215,42 @@ const css = `
 
   /* ── RESPONSIVE ── */
   @media (max-width:1100px) { .ex-kpi-row { grid-template-columns:repeat(2,1fr); } .ex-grid2 { grid-template-columns:1fr; } }
+  @media (max-width:700px) {
+    /* Card-style table for small screens */
+    .ex-table-wrap { overflow-x:hidden; }
+    .ex-table thead { display:none; }
+    .ex-table, .ex-table tbody, .ex-table tr, .ex-table td { display:block; width:100%; }
+    .ex-table tr { padding:12px 18px; border-bottom:1px solid var(--border2); position:relative; }
+    .ex-table tbody tr:nth-child(even) { background:rgba(249,250,251,0.8); }
+    .ex-table td { padding:2px 0; border:none; text-align:left !important; }
+    .ex-table td::before {
+      content:attr(data-label);
+      display:inline-block; width:80px;
+      font-size:9px; font-weight:700; color:var(--ink4);
+      text-transform:uppercase; letter-spacing:.08em;
+      font-family:'Space Mono',monospace;
+    }
+    .ex-table tfoot { display:block; }
+    .ex-table tfoot tr { padding:12px 18px; border-top:2px solid var(--border); background:rgba(220,38,38,0.03); }
+    .ex-table tfoot td { padding:2px 0; border:none; }
+    /* Hide "vs Largest" bar column on mobile */
+    .ex-table td:nth-child(5) { display:none; }
+  }
   @media (max-width:640px) {
     .ex-header { padding:16px 16px 0; }
     .ex-kpi-row { padding:16px 16px 0; grid-template-columns:repeat(2,1fr); }
-    .ex-body { padding:14px 16px 24px; }
+    .ex-body { padding:14px 16px 24px; gap:14px; }
+    .ex-title { font-size:22px; }
+    .ex-card-hd { padding:14px 16px 0; }
+    .ex-tabs { padding:0 16px 12px; flex-wrap:wrap; }
+    .ex-legend { padding:0 16px 16px; }
+    .ex-bar-list { padding:0 16px 16px; }
+    .ex-trend-wrap { padding:0 16px 16px; }
+  }
+  @media (max-width:400px) {
+    .ex-kpi-row { grid-template-columns:1fr; }
+    .ex-kpi-meta { display:none; }
+    .ex-header-actions .ex-btn-ghost { display:none; }
   }
 `;
 
@@ -585,26 +617,26 @@ export default function Expenses() {
                     const vsTop = topExpense ? (item.value / topExpense.value) * 100 : 0;
                     return (
                       <tr key={i}>
-                        <td>
+                        <td data-label="#">
                           <span className={`ex-rank ${i === 0 ? "top" : ""}`}>#{i + 1}</span>
                         </td>
-                        <td>
+                        <td data-label="Account">
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.color, flexShrink: 0, display: "inline-block" }} />
                             <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{item.name}</span>
                           </div>
                         </td>
-                        <td className="right">
+                        <td className="right" data-label="Amount">
                           <span style={{ fontFamily: "'Space Mono',monospace", fontWeight: 700, color: "#dc2626" }}>
                             {fmtCurrency(item.value)}
                           </span>
                         </td>
-                        <td className="right">
+                        <td className="right" data-label="Share">
                           <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, color: "#4B5563" }}>
                             {share.toFixed(1)}%
                           </span>
                         </td>
-                        <td className="right">
+                        <td className="right" data-label="vs Top">
                           <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
                             <div style={{ width: 64, height: 5, borderRadius: 99, background: "#F3F4F6", overflow: "hidden" }}>
                               <div style={{ width: `${vsTop}%`, height: "100%", borderRadius: 99, background: item.color }} />

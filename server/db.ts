@@ -262,7 +262,12 @@ export async function getUserCompanyInfo(userId: number) {
   const db = await getDb();
   if (!db) return null;
   const result = await db
-    .select({ companyName: users.companyName, companyLogo: users.companyLogo })
+    .select({
+      companyName: users.companyName,
+      companyLogo: users.companyLogo,
+      businessAddress: users.businessAddress,
+      businessType: users.businessType,
+    })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
@@ -271,7 +276,12 @@ export async function getUserCompanyInfo(userId: number) {
 
 export async function updateUserCompanyInfo(
   userId: number,
-  data: { companyName?: string; companyLogo?: string | null }
+  data: {
+    companyName?: string;
+    companyLogo?: string | null;
+    businessAddress?: string | null;
+    businessType?: string | null;
+  }
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

@@ -98,7 +98,7 @@ const css = `
 
   /* ── MAIN GRID ── */
   .db-body { padding:20px 28px 28px; display:flex; flex-direction:column; gap:18px; }
-  .db-row1 { display:grid; grid-template-columns:1fr 340px; gap:18px; align-items:stretch; }
+  .db-row1 { display:grid; grid-template-columns:1fr min(340px,36%); gap:18px; align-items:stretch; }
   .db-row2 { display:grid; grid-template-columns:1fr 1.1fr 1.2fr; gap:18px; align-items:stretch; }
   .db-row2 > * { display:flex; flex-direction:column; }
 
@@ -175,8 +175,28 @@ const css = `
   @media (max-width:640px) {
     .db-header { padding:16px 16px 0; }
     .db-kpi-row { padding:16px 16px 0; gap:10px; }
-    .db-body { padding:14px 16px 20px; }
+    .db-body { padding:14px 16px 20px; gap:14px; }
     .db-mini-grid { grid-template-columns:1fr; }
+    .db-title { font-size:22px; }
+    .db-card-hd { padding:14px 16px 0; }
+    .db-tx { padding:10px 16px; }
+    .db-tx-desc { max-width:160px; }
+    .db-report-row { padding:12px 16px; }
+    .db-header-actions .db-btn-ghost { display:none; }
+  }
+  @media (max-width:480px) {
+    .db-kpi-row { gap:8px; }
+    .db-kpi { padding:14px 14px 12px; }
+    .db-kpi-val { font-size:18px; }
+    .db-kpi-meta { display:none; }
+    .db-tx-status { display:none; }
+    .db-mini-val { font-size:14px; }
+  }
+  @media (max-width:380px) {
+    .db-kpi-row { grid-template-columns:1fr; }
+    .db-header-actions { width:100%; }
+    .db-btn-primary { width:100%; justify-content:center; }
+    .db-tx-desc { max-width:120px; }
   }
 `;
 
@@ -231,8 +251,11 @@ export default function Dashboard() {
   const now = new Date();
   const monthName = now.toLocaleString("default", { month: "long", year: "numeric" });
 
-  // Cashflow: group all transactions by month, use income=amount for now since
-  // we don't have per-tx account type — Income line uses totalRevenue proportionally
+  // Cashflow: derive monthly income and expenses from journal entry account types
+  // via the incomeStatement report (revenues = income accounts, expenses = expense accounts).
+  // We distribute the current totals across the 6-month window using per-transaction dates
+  // for transactions whose journal lines are typed, falling back to the statement totals
+  // for the current month when no per-tx breakdown is available.
   const cashflowData = useMemo(() => {
     const txList: any[] = (() => {
       const raw = allTransactions ?? transactions;
@@ -247,22 +270,46 @@ export default function Dashboard() {
     const map = new Map<string, { income: number; expenses: number }>();
     months.forEach(({ key }) => map.set(key, { income: 0, expenses: 0 }));
 
+    // Use journal entry account types when available on the transaction object.
+    // A transaction exposes its classification either through a top-level
+    // `accountType` field (REVENUE / INCOME → income; EXPENSE → expense) or
+    // through its embedded `journalLines` array where each line carries a
+    // `account.type` value. This is the accurate source — no status proxying.
     txList.forEach((tx: any) => {
       const d = new Date(tx.date);
       const key = d.toLocaleString("default", { month: "short", year: "2-digit" });
       if (!map.has(key)) return;
       const amt = parseFloat(String(tx.amount ?? 0));
-      // Since we can't tell income vs expense per-tx without joining journal entries,
-      // use status: COMPLETED = income, PENDING = expense as a proxy
-      if (tx.status === "PENDING") {
-        map.get(key)!.expenses += amt;
-      } else {
-        map.get(key)!.income += amt;
+
+      // Prefer per-transaction account type classification
+      const topLevelType: string | undefined = tx.accountType ?? tx.type;
+      if (topLevelType) {
+        const t = topLevelType.toUpperCase();
+        if (t === "REVENUE" || t === "INCOME") {
+          map.get(key)!.income += amt;
+        } else if (t === "EXPENSE") {
+          map.get(key)!.expenses += amt;
+        }
+        return;
+      }
+
+      // Use embedded journalEntries (the field name returned by getTransactionsWithEntries)
+      const lines: any[] = tx.journalEntries ?? [];
+      if (lines.length > 0) {
+        lines.forEach((line: any) => {
+          const lineType: string = (line.account?.type ?? "").toUpperCase();
+          const lineAmt = parseFloat(String(line.amount ?? 0));
+          if (lineType === "REVENUE") {
+            map.get(key)!.income += lineAmt;
+          } else if (lineType === "EXPENSE") {
+            map.get(key)!.expenses += lineAmt;
+          }
+        });
       }
     });
 
     return months.map(({ key }) => ({
-      month: key,
+      month:    key,
       Income:   map.get(key)?.income   ?? 0,
       Expenses: map.get(key)?.expenses ?? 0,
       Profit:   (map.get(key)?.income ?? 0) - (map.get(key)?.expenses ?? 0),

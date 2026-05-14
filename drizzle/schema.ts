@@ -13,6 +13,8 @@ export const users = pgTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
   companyName: varchar("companyName", { length: 255 }),
   companyLogo: text("companyLogo"), // base64 data URL
+  businessAddress: text("businessAddress"),
+  businessType: varchar("businessType", { length: 64 }),
 });
 
 export type User = typeof users.$inferSelect;

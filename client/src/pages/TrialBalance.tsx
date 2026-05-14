@@ -76,8 +76,57 @@ const css = `
   /* ── KPI ROW ── */
   .tb-kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; padding:20px 28px 0; }
   @media(max-width:900px) { .tb-kpi-row { grid-template-columns:repeat(2,1fr); } }
-
-  .tb-kpi {
+  @media(max-width:700px) {
+    /* Card-style table */
+    .tb-table-wrap { overflow-x:hidden; }
+    .tb-table thead { display:none; }
+    .tb-table, .tb-table tbody, .tb-table tr, .tb-table td { display:block; width:100%; }
+    .tb-table tr { padding:12px 18px; border-bottom:1px solid var(--border2); }
+    .tb-table tbody tr:nth-child(even) { background:rgba(249,250,251,0.7); }
+    .tb-table td { padding:2px 0; border:none; text-align:left !important; }
+    .tb-table td::before {
+      content:attr(data-label);
+      display:inline-block; width:72px;
+      font-size:9px; font-weight:700; color:var(--ink4);
+      text-transform:uppercase; letter-spacing:.08em;
+      font-family:'Space Mono',monospace;
+    }
+    .tb-table .tb-group-row { display:block; }
+    .tb-table .tb-group-row td { padding:8px 18px 4px; }
+    .tb-table .tb-subtotal-row { display:block; }
+    .tb-table .tb-subtotal-row td { padding:6px 18px; }
+    .tb-table tfoot { display:block; }
+    .tb-table tfoot tr { padding:12px 18px; border-top:3px double var(--border); background:rgba(79,99,210,0.05); }
+    .tb-table tfoot td { padding:2px 0; border:none; font-size:12px; }
+    .tb-toolbar { flex-wrap:wrap; }
+    .tb-search-wrap { max-width:100%; min-width:100%; }
+    .tb-filter-btn { font-size:10.5px; padding:6px 10px; }
+    .tb-banner { flex-wrap:wrap; }
+    .tb-banner-diff { margin-left:0; }
+  }
+  @media(max-width:640px) {
+    .tb-header { padding:16px 16px 0; }
+    .tb-kpi-row { padding:16px 16px 0; }
+    .tb-body    { padding:14px 16px 20px; gap:12px; }
+    .tb-title   { font-size:22px; }
+    .tb-card-hd { padding:14px 16px 0; }
+    .tb-toolbar { padding:0 16px 12px; gap:6px; }
+    .tb-banner  { margin:0 16px 14px; }
+    .tb-divider { margin:0 16px; }
+    .tb-breakdown-grid { padding:0 16px 16px; }
+    .tb-pagination { padding:10px 16px; flex-wrap:wrap; gap:6px; }
+  }
+  @media(max-width:480px) {
+    .tb-header-actions { flex-wrap:wrap; gap:6px; }
+    .tb-btn-primary { flex:1; justify-content:center; }
+  }
+  @media(max-width:400px) {
+    .tb-kpi-row { grid-template-columns:1fr; }
+    .tb-kpi-meta { display:none; }
+    .tb-breakdown-grid { grid-template-columns:1fr 1fr; }
+    .tb-pagination-info { display:none; }
+    .tb-filter-btn { font-size:9.5px; padding:5px 8px; }
+  }
     background:#fff; border:1px solid var(--border);
     border-radius:16px; padding:20px 20px 16px;
     box-shadow:0 1px 4px rgba(0,0,0,0.05), 0 4px 18px rgba(0,0,0,0.07);
@@ -92,11 +141,6 @@ const css = `
 
   /* ── BODY ── */
   .tb-body { padding:20px 28px 28px; display:flex; flex-direction:column; gap:16px; }
-  @media(max-width:640px) {
-    .tb-header { padding:16px 16px 0; }
-    .tb-kpi-row { padding:16px 16px 0; }
-    .tb-body    { padding:14px 16px 20px; }
-  }
 
   /* ── CARD ── */
   .tb-card {
@@ -429,22 +473,22 @@ export default function TrialBalance() {
       for (const r of groups[type]) {
         els.push(
           <tr key={r.accountId ?? r.accountName}>
-            <td>
+            <td data-label="Account">
               <div className="tb-acct-name">{r.accountName}</div>
               {r.accountCode && <span className="tb-acct-code">{r.accountCode}</span>}
             </td>
-            <td>
+            <td data-label="Type">
               <span className="tb-acct-badge" style={{ background:m.bg, color:m.text }}>
                 <span className="tb-acct-dot" style={{ background:m.dot }} />
                 {type.charAt(0) + type.slice(1).toLowerCase()}
               </span>
             </td>
-            <td className="right">
+            <td className="right" data-label="Dr">
               {r.drAmt > 0
                 ? <span className="tb-amt-dr">{fmt(r.drAmt)}</span>
                 : <span className="tb-amt-dash">—</span>}
             </td>
-            <td className="right">
+            <td className="right" data-label="Cr">
               {r.crAmt > 0
                 ? <span className="tb-amt-cr">{fmt(r.crAmt)}</span>
                 : <span className="tb-amt-dash">—</span>}

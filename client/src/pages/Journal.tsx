@@ -223,10 +223,43 @@ const css = `
     .jn-kpi-row { grid-template-columns:repeat(3,1fr); }
     .jn-row2 { grid-template-columns:1fr; }
   }
+  @media (max-width:700px) {
+    /* Card-style table */
+    .jn-table-wrap { overflow-x:hidden; }
+    .jn-table thead { display:none; }
+    .jn-table, .jn-table tbody, .jn-table tr, .jn-table td { display:block; width:100%; }
+    .jn-table tr { padding:12px 16px; border-bottom:1px solid rgba(0,0,0,0.05); }
+    .jn-table td { padding:2px 0; border:none; text-align:left !important; }
+    .jn-table td::before {
+      content:attr(data-label);
+      display:inline-block; width:75px;
+      font-size:9px; font-weight:700; color:var(--ink4);
+      text-transform:uppercase; letter-spacing:.08em;
+      font-family:'Space Mono',monospace;
+    }
+    /* Hide Cr amount col on mobile (redundant with Dr for equal D-E) */
+    .jn-table td:nth-child(6) { display:none; }
+    .jn-desc { max-width:100%; }
+  }
   @media (max-width:640px) {
-    .jn-header { padding:16px 16px 0; flex-direction:column; gap:12px; }
-    .jn-kpi-row { padding:16px 16px 0; }
-    .jn-body { padding:14px 16px 20px; }
+    .jn-header { padding:16px 16px 0; flex-direction:column; gap:10px; }
+    .jn-kpi-row { padding:16px 16px 0; grid-template-columns:repeat(3,1fr); }
+    .jn-body { padding:14px 16px 20px; gap:14px; }
+    .jn-title { font-size:22px; }
+    .jn-card-hd { padding:14px 16px 0; }
+    .jn-toolbar { padding:0 16px 12px; flex-wrap:wrap; }
+    .jn-search-wrap { max-width:100%; }
+    .jn-filter-btn { font-size:10px; padding:5px 9px; }
+    .jn-header-actions .jn-btn-ghost { display:none; }
+  }
+  @media (max-width:480px) {
+    .jn-kpi-row { grid-template-columns:1fr 1fr; }
+    .jn-kpi-val { font-size:18px; }
+  }
+  @media (max-width:380px) {
+    .jn-kpi-row { grid-template-columns:1fr; }
+    .jn-header-actions { width:100%; }
+    .jn-btn-primary { width:100%; justify-content:center; }
   }
 `;
 
@@ -442,15 +475,15 @@ export default function Journal() {
                       const crAmt = creditEntry?.amount ?? tx.amount;
                       return (
                         <tr key={tx.id}>
-                          <td>
+                          <td data-label="Date">
                             <span className="jn-date">
                               {new Date(tx.date).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
                             </span>
                           </td>
-                          <td>
+                          <td data-label="Desc">
                             <span className="jn-desc">{tx.description}</span>
                           </td>
-                          <td>
+                          <td data-label="Debit">
                             {debitAcct ? (
                               <span className="jn-acct-badge" style={{ background: dr.bg, color: dr.text }}>
                                 <span className="jn-acct-dot" style={{ background: dr.dot }} />
@@ -458,7 +491,7 @@ export default function Journal() {
                               </span>
                             ) : <span style={{ color:"var(--ink4)", fontSize:11 }}>—</span>}
                           </td>
-                          <td>
+                          <td data-label="Credit">
                             {creditAcct ? (
                               <span className="jn-acct-badge" style={{ background: cr.bg, color: cr.text }}>
                                 <span className="jn-acct-dot" style={{ background: cr.dot }} />
@@ -466,8 +499,8 @@ export default function Journal() {
                               </span>
                             ) : <span style={{ color:"var(--ink4)", fontSize:11 }}>—</span>}
                           </td>
-                          <td className="right jn-amt-dr">{fmt(drAmt)}</td>
-                          <td className="right jn-amt-cr">{fmt(crAmt)}</td>
+                          <td className="right jn-amt-dr" data-label="Dr">{ fmt(drAmt)}</td>
+                          <td className="right jn-amt-cr" data-label="Cr">{fmt(crAmt)}</td>
                         </tr>
                       );
                     })}

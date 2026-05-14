@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import {
   User, Lock, Shield, Bell, Copy,
   Eye, EyeOff, Check, AlertTriangle,
-  Trash2, LogOut,
+  Trash2, LogOut, Building2, Upload, X,
 } from "lucide-react";
 
 /* ─── CSS ─────────────────────────────────────────────────────────────── */
@@ -48,7 +48,7 @@ const css = `
   .pg-body { padding:20px 28px 32px; display:flex; flex-direction:column; gap:18px; }
 
   /* TWO-COL */
-  .pg-cols { display:grid; grid-template-columns:1fr 340px; gap:18px; align-items:start; }
+  .pg-cols { display:grid; grid-template-columns:1fr min(340px,38%); gap:18px; align-items:start; }
 
   /* CARD */
   .pg-card {
@@ -211,6 +211,76 @@ const css = `
   }
   .pg-danger-btn:hover { background:var(--red2); border-color:var(--red); }
 
+  /* COMPANY LOGO UPLOAD */
+  .pg-logo-area {
+    margin: 0 22px 16px;
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex; align-items: center; gap: 16px;
+    cursor: pointer; transition: all .18s; background: var(--surface2);
+    position: relative;
+  }
+  .pg-logo-area:hover { border-color: var(--blue); background: var(--blue3); }
+  .pg-logo-area.has-logo { border-style: solid; border-color: var(--border); }
+  .pg-logo-preview {
+    width: 64px; height: 64px; border-radius: 12px; flex-shrink: 0;
+    background: linear-gradient(135deg, #818cf8, #4f46e5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 800; color: #fff;
+    overflow: hidden; box-shadow: 0 4px 14px rgba(79,70,229,.2);
+  }
+  .pg-logo-preview img { width: 100%; height: 100%; object-fit: cover; }
+  .pg-logo-text-wrap { flex: 1; min-width: 0; }
+  .pg-logo-title  { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+  .pg-logo-hint   { font-size: 11.5px; color: var(--ink4); line-height: 1.4; }
+  .pg-logo-remove {
+    position: absolute; top: 10px; right: 10px;
+    width: 24px; height: 24px; border-radius: 6px; border: none;
+    background: var(--red2); color: var(--red); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all .15s;
+  }
+  .pg-logo-remove:hover { background: var(--red); color: #fff; }
+  .pg-select {
+    width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: 'Outfit', sans-serif; font-size: 13.5px; font-weight: 500;
+    color: var(--ink); background: var(--surface2); outline: none;
+    transition: border-color .15s, box-shadow .15s; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+    padding-right: 38px;
+  }
+  .pg-select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,99,210,0.1); background-color: #fff; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width:900px) {
+    .pg-cols { grid-template-columns:1fr; }
+    .pg-right { flex-direction:column; }
+  }
+  @media (max-width:600px) {
+    .pg-header { padding:16px 16px 0; }
+    .pg-body   { padding:14px 16px 24px; gap:14px; }
+    .pg-title  { font-size:22px; }
+    .pg-card-hd    { padding:12px 16px; }
+    .pg-profile-row{ padding:14px 16px; }
+    .pg-section-label{ padding:12px 16px 6px; }
+    .pg-field-wrap { padding:0 16px 14px; }
+    .pg-submit     { margin:4px 16px 16px; }
+    .pg-divider    { margin:6px 16px; }
+    .pg-toggle-row { padding:12px 16px; }
+    .pg-session-row{ padding:10px 16px; }
+    .pg-signout-btn{ margin:0 16px 14px; }
+    .pg-prefs-btn  { margin:4px 16px 14px; }
+    .pg-danger-hd  { padding:12px 16px; }
+    .pg-danger-row { padding:12px 16px; flex-direction:column; align-items:flex-start; gap:10px; }
+    .pg-danger-btn { width:100%; justify-content:center; }
+    .pg-logo-area  { flex-direction:column; align-items:flex-start; }
+  }
+  @media (max-width:400px) {
+    .pg-profile-row { flex-direction:column; align-items:flex-start; }
+    .pg-profile-meta{ flex-wrap:wrap; }
+  }
+
   /* TOAST */
   .pg-toast {
     position:fixed; bottom:24px; right:28px; z-index:9999;
@@ -219,6 +289,9 @@ const css = `
     font-size:13px; font-weight:600; font-family:'Outfit',sans-serif;
     box-shadow:0 8px 32px rgba(0,0,0,0.2);
     animation:popIn .25s ease both;
+  }
+  @media (max-width:600px) {
+    .pg-toast { right:12px; left:12px; bottom:16px; }
   }
   .pg-toast.success { background:#15803d; color:#fff; }
   .pg-toast.error   { background:#dc2626; color:#fff; }
@@ -244,6 +317,48 @@ export default function Account() {
   const { data: companyInfo } = trpc.user.getCompanyInfo.useQuery(undefined, { enabled:!!user });
   const updateCompanyInfo = trpc.user.updateCompanyInfo.useMutation();
 
+  const [companyName,     setCompanyName]     = useState("");
+  const [companyAddress,  setCompanyAddress]  = useState("");
+  const [businessType,    setBusinessType]    = useState("");
+  const [companyLogo,     setCompanyLogo]     = useState<string|null>(null);
+  const [savingCompany,   setSavingCompany]   = useState(false);
+
+  // Sync server data into local state once loaded
+  useEffect(() => {
+    if (companyInfo) {
+      setCompanyName(companyInfo.companyName ?? "");
+      setCompanyLogo(companyInfo.companyLogo ?? null);
+      setCompanyAddress(companyInfo.businessAddress ?? "");
+      setBusinessType(companyInfo.businessType ?? "");
+    }
+  }, [companyInfo]);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { showToast("Logo must be under 2 MB", "error"); return; }
+    const reader = new FileReader();
+    reader.onload = () => setCompanyLogo(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveCompany = async () => {
+    setSavingCompany(true);
+    try {
+      await updateCompanyInfo.mutateAsync({
+        companyName:     companyName     || undefined,
+        companyLogo:     companyLogo,
+        businessAddress: companyAddress  || null,
+        businessType:    businessType    || null,
+      });
+      showToast("Business profile saved");
+    } catch {
+      showToast("Failed to save business profile", "error");
+    } finally {
+      setSavingCompany(false);
+    }
+  };
+
   /* toast */
   const [toast, setToast] = useState<{msg:string;type:"success"|"error"|"info"}|null>(null);
   const showToast = (msg:string, type:"success"|"error"|"info"="success") => setToast({msg,type});
@@ -262,9 +377,22 @@ export default function Account() {
   const maskedId = userId === "—" ? "—" : userId.length > 8 ? "••••••••••••••••••••••••-" + userId.slice(-8) : "••••••••";
 
   /* notifications */
+  const { data: notifPrefs } = trpc.user.getNotificationPrefs.useQuery(undefined, { enabled: !!user });
+  const updateNotifPrefs = trpc.user.updateNotificationPrefs.useMutation();
+
   const [emailAlerts,  setEmailAlerts]  = useState(true);
   const [reportRemind, setReportRemind] = useState(false);
   const [secAlerts,    setSecAlerts]    = useState(true);
+  const [savingPrefs,  setSavingPrefs]  = useState(false);
+
+  // Seed toggle state from server once loaded
+  useEffect(() => {
+    if (notifPrefs) {
+      setEmailAlerts(notifPrefs.emailAlerts      ?? true);
+      setReportRemind(notifPrefs.reportReminders ?? false);
+      setSecAlerts(notifPrefs.securityAlerts     ?? true);
+    }
+  }, [notifPrefs]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(userId).then(()=>{ setCopied(true); setTimeout(()=>setCopied(false),1800); });
@@ -285,8 +413,20 @@ export default function Account() {
     }
   };
 
-  const handleSavePrefs = () => {
-    showToast("Preferences saved");
+  const handleSavePrefs = async () => {
+    setSavingPrefs(true);
+    try {
+      await updateNotifPrefs.mutateAsync({
+        emailAlerts,
+        reportReminders: reportRemind,
+        securityAlerts: secAlerts,
+      });
+      showToast("Preferences saved");
+    } catch {
+      showToast("Failed to save preferences", "error");
+    } finally {
+      setSavingPrefs(false);
+    }
   };
 
   const initials = (user?.name || user?.email || "U")[0].toUpperCase();
@@ -307,6 +447,111 @@ export default function Account() {
 
           {/* ── LEFT COLUMN ── */}
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+            {/* Company / Business Profile */}
+            <div className="pg-card" style={{animationDelay:".03s"}}>
+              <div className="pg-card-hd">
+                <div className="pg-card-icon" style={{background:"rgba(79,99,210,0.08)"}}>
+                  <Building2 size={15} color="#4F63D2"/>
+                </div>
+                <div>
+                  <div className="pg-card-eyebrow">Business Identity</div>
+                  <div className="pg-card-title">Business Profile</div>
+                </div>
+              </div>
+
+              {/* Logo upload */}
+              <div className="pg-section-label">Company Logo</div>
+              <label className={`pg-logo-area${companyLogo?" has-logo":""}`} style={{display:"flex"}}>
+                <input
+                  type="file" accept="image/*" style={{display:"none"}}
+                  onChange={handleLogoUpload}
+                />
+                <div className="pg-logo-preview">
+                  {companyLogo
+                    ? <img src={companyLogo} alt="logo"/>
+                    : <span>{(companyName||"B")[0].toUpperCase()}</span>
+                  }
+                </div>
+                <div className="pg-logo-text-wrap">
+                  <div className="pg-logo-title">
+                    {companyLogo ? "Logo uploaded" : "Upload your logo"}
+                  </div>
+                  <div className="pg-logo-hint">
+                    {companyLogo
+                      ? "Click to replace · PNG, JPG or SVG · max 2 MB"
+                      : "PNG, JPG or SVG · max 2 MB · Shown on reports & invoices"
+                    }
+                  </div>
+                </div>
+                {companyLogo && (
+                  <button
+                    className="pg-logo-remove"
+                    onClick={e=>{ e.preventDefault(); setCompanyLogo(null); }}
+                    title="Remove logo"
+                  >
+                    <X size={12}/>
+                  </button>
+                )}
+              </label>
+
+              {/* Company Name */}
+              <div className="pg-section-label">Company / Business Name</div>
+              <div className="pg-field-wrap">
+                <input
+                  className="pg-input"
+                  placeholder="e.g. Yuayans Trading"
+                  value={companyName}
+                  onChange={e=>setCompanyName(e.target.value)}
+                />
+                <div className="pg-hint">This name appears on all report headers</div>
+              </div>
+
+              {/* Address */}
+              <div className="pg-section-label">Business Address</div>
+              <div className="pg-field-wrap">
+                <input
+                  className="pg-input"
+                  placeholder="e.g. 123 Main St, Imus, Cavite"
+                  value={companyAddress}
+                  onChange={e=>setCompanyAddress(e.target.value)}
+                />
+              </div>
+
+              {/* Business Type */}
+              <div className="pg-section-label">Business Type</div>
+              <div className="pg-field-wrap">
+                <select
+                  className="pg-select"
+                  value={businessType}
+                  onChange={e=>setBusinessType(e.target.value)}
+                >
+                  <option value="">Select a business type…</option>
+                  <option value="sole_prop">Sole Proprietorship</option>
+                  <option value="partnership">Partnership</option>
+                  <option value="corporation">Corporation</option>
+                  <option value="opc">One Person Corporation (OPC)</option>
+                  <option value="cooperative">Cooperative</option>
+                  <option value="ngo">Non-Profit / NGO</option>
+                  <option value="other">Other</option>
+                </select>
+                <div className="pg-hint">Used for report classification and compliance notes</div>
+              </div>
+
+              <div className="pg-divider"/>
+
+              <button
+                className="pg-submit"
+                onClick={handleSaveCompany}
+                disabled={savingCompany}
+                style={{marginTop:8}}
+              >
+                {savingCompany
+                  ? "Saving…"
+                  : <><Building2 size={13}/>Save Business Profile</>
+                }
+              </button>
+            </div>
 
             {/* Profile + Account Info */}
             <div className="pg-card" style={{animationDelay:".05s"}}>
@@ -459,7 +704,7 @@ export default function Account() {
               </div>
 
               <div style={{height:8}}/>
-              <button className="pg-prefs-btn" onClick={handleSavePrefs}>Save Preferences</button>
+              <button className="pg-prefs-btn" onClick={handleSavePrefs} disabled={savingPrefs}>{savingPrefs ? "Saving…" : "Save Preferences"}</button>
             </div>
 
             {/* Session Info */}

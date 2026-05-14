@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+ import { useState, useRef, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import {
   Loader2, ChevronRight, ChevronLeft, CheckCircle2,
   ArrowLeftRight, CalendarDays, FileText, Hash,
-  Wallet, CreditCard, CircleDot, ChevronDown
+  Wallet, CreditCard, CircleDot, ChevronDown,
+  Plus, AlertTriangle,
 } from "lucide-react";
 
 const TYPE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
@@ -219,6 +220,120 @@ const css = `
   .nt-btn-success:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,.42); }
   .nt-btn:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
   .nt-spin { animation: spin 1s linear infinite; }
+
+  /* EMPTY STATE BANNER */
+  .nt-empty-banner {
+    display: flex; align-items: flex-start; gap: 14px;
+    background: linear-gradient(135deg,#fefce8,#fef9c3);
+    border: 1.5px solid #fde047; border-radius: 14px;
+    padding: 16px 18px; margin-bottom: 20px;
+    animation: fadeUp 0.3s ease both;
+  }
+  .nt-empty-icon {
+    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+    background: linear-gradient(135deg,#eab308,#ca8a04);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(202,138,4,.3);
+  }
+  .nt-empty-body { flex: 1; }
+  .nt-empty-title { font-size: 14px; font-weight: 800; color: #713f12; margin-bottom: 3px; }
+  .nt-empty-desc  { font-size: 12.5px; color: #854d0e; font-weight: 500; line-height: 1.5; }
+  .nt-empty-action {
+    margin-top: 10px; display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer;
+    background: linear-gradient(135deg,#eab308,#ca8a04); color: #fff;
+    font-size: 12px; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif;
+    box-shadow: 0 3px 10px rgba(202,138,4,.35); transition: all .15s;
+  }
+  .nt-empty-action:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(202,138,4,.45); }
+
+  /* CREATE ACCOUNT shortcut inside dropdown */
+  .nt-dd-create {
+    display: flex; align-items: center; gap: 9px;
+    padding: 11px 14px; cursor: pointer;
+    border-top: 1.5px dashed #e0e7ff;
+    background: linear-gradient(135deg,#f5f7ff,#eef2ff);
+    transition: background .12s;
+  }
+  .nt-dd-create:hover { background: #e0e7ff; }
+  .nt-dd-create-icon {
+    width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+    background: linear-gradient(135deg,#6366f1,#4f46e5);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nt-dd-create-label { font-size: 12.5px; font-weight: 700; color: #4f46e5; }
+
+  /* MODAL OVERLAY */
+  .nt-modal-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(15,23,42,0.55); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    animation: fadeUp 0.2s ease both;
+  }
+  .nt-modal {
+    background: #fff; border-radius: 20px; width: 100%; max-width: 440px;
+    box-shadow: 0 24px 80px rgba(30,27,75,0.35), 0 4px 16px rgba(99,102,241,0.15);
+    animation: scaleIn 0.22s cubic-bezier(.34,1.36,.64,1) both; overflow: hidden;
+  }
+  .nt-modal-header {
+    padding: 20px 24px 16px;
+    background: linear-gradient(135deg,#4f46e5,#6366f1);
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .nt-modal-title    { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+  .nt-modal-subtitle { font-size: 12px; color: rgba(255,255,255,0.70); margin-top: 3px; font-weight: 500; }
+  .nt-modal-close {
+    width: 28px; height: 28px; border-radius: 8px; border: none; cursor: pointer;
+    background: rgba(255,255,255,0.18); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; line-height: 1; transition: background .15s; flex-shrink: 0;
+  }
+  .nt-modal-close:hover { background: rgba(255,255,255,0.28); }
+  .nt-modal-body   { padding: 22px 24px; }
+  .nt-modal-footer {
+    display: flex; gap: 10px; justify-content: flex-end;
+    padding: 14px 24px; border-top: 1px solid #f1f5f9; background: #fafbff;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width:640px) {
+    .nt-wrap { padding:16px 16px; }
+    .nt-page-title { font-size:20px; }
+    .nt-stepper { padding:10px 14px; gap:0; }
+    .nt-step-info { display:none; }
+    .nt-step-line { margin:0 8px; }
+    .nt-step-circle { width:32px; height:32px; font-size:12px; }
+    .nt-card-header { padding:16px 18px 12px; }
+    .nt-card-body   { padding:16px 18px; }
+    .nt-card-footer { padding:12px 18px; gap:8px; }
+    .nt-account-pair { grid-template-columns:1fr; gap:12px; }
+    .nt-pair-arrow { width:100%; height:36px; border-radius:8px; }
+    .nt-field-row { grid-template-columns:1fr; gap:0; }
+    .nt-review-row { flex-direction:column; align-items:flex-start; gap:4px; }
+    .nt-review-val { font-size:12px; }
+    .nt-btn { padding:10px 14px; font-size:12px; }
+    .nt-modal { margin:12px; max-width:100%; }
+    .nt-type-grid { grid-template-columns:repeat(3,1fr); }
+    .nt-success-amount { font-size:24px; padding:8px 18px; }
+  }
+  @media (max-width:380px) {
+    .nt-wrap { padding:12px 12px; }
+    .nt-card-footer { flex-direction:column-reverse; }
+    .nt-btn { width:100%; justify-content:center; }
+    .nt-type-grid { grid-template-columns:repeat(2,1fr); }
+  }
+
+  /* TYPE PICKER */
+  .nt-type-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-top: 8px; }
+  .nt-type-tile {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 10px 4px; border-radius: 10px; cursor: pointer;
+    border: 2px solid transparent; transition: all .15s;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .nt-type-tile:hover { transform: translateY(-2px); }
+  .nt-type-tile.selected { border-color: currentColor; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+  .nt-type-tile-dot { width: 10px; height: 10px; border-radius: 50%; }
 `;
 
 type Step = 1 | 2 | 3 | 4;
@@ -229,11 +344,101 @@ const STEPS = [
   { n: 4, name: "Done" },
 ];
 
+const ACCOUNT_TYPES = ["ASSET","LIABILITY","EQUITY","REVENUE","EXPENSE"] as const;
+type AccountType = typeof ACCOUNT_TYPES[number];
+
+function CreateAccountModal({ onClose, onCreated }: {
+  onClose: () => void;
+  onCreated: (account: any) => void;
+}) {
+  const [name, setName] = useState("");
+  const [type, setType] = useState<AccountType>("ASSET");
+  const [description, setDescription] = useState("");
+  const utils = trpc.useUtils();
+
+  const createAccount = trpc.accounts.create.useMutation({
+    onSuccess: (account) => {
+      utils.accounts.list.invalidate();
+      toast.success(`Account "${account.name}" created!`);
+      onCreated(account);
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to create account"),
+  });
+
+  const handleCreate = () => {
+    if (!name.trim()) { toast.error("Account name is required"); return; }
+    createAccount.mutate({ name: name.trim(), type, description: description.trim() || undefined });
+  };
+
+  return (
+    <div className="nt-modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="nt-modal">
+        <div className="nt-modal-header">
+          <div>
+            <div className="nt-modal-title">Create Account</div>
+            <div className="nt-modal-subtitle">New account will be selected automatically</div>
+          </div>
+          <button className="nt-modal-close" onClick={onClose}>×</button>
+        </div>
+
+        <div className="nt-modal-body">
+          <div className="nt-field">
+            <label className="nt-label"><FileText size={13} /> Account Name <span className="nt-label-req">*</span></label>
+            <input
+              className="nt-input" placeholder="e.g. Cash on Hand, Sales Revenue…"
+              value={name} onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleCreate()}
+              autoFocus
+            />
+          </div>
+
+          <div className="nt-field">
+            <label className="nt-label"><CircleDot size={13} /> Account Type <span className="nt-label-req">*</span></label>
+            <div className="nt-type-grid">
+              {ACCOUNT_TYPES.map(t => {
+                const c = TYPE_COLORS[t];
+                return (
+                  <div
+                    key={t}
+                    className={`nt-type-tile${type === t ? " selected" : ""}`}
+                    style={{ background: c.bg, color: c.text }}
+                    onClick={() => setType(t)}
+                  >
+                    <span className="nt-type-tile-dot" style={{ background: c.dot }} />
+                    {t}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="nt-field" style={{ marginBottom: 0 }}>
+            <label className="nt-label"><FileText size={13} /> Description <span style={{ color:"#94a3b8", fontWeight:500, textTransform:"none", letterSpacing:0 }}>(optional)</span></label>
+            <input
+              className="nt-input" placeholder="Brief description…"
+              value={description} onChange={e => setDescription(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="nt-modal-footer">
+          <button className="nt-btn nt-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="nt-btn nt-btn-primary" onClick={handleCreate} disabled={createAccount.isPending}>
+            {createAccount.isPending ? <Loader2 size={13} className="nt-spin" /> : <Plus size={13} />}
+            Create Account
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AccountDropdown({ value, onChange, accounts, placeholder, disabled }: {
   value: string; onChange: (v: string) => void;
   accounts: any[]; placeholder: string; disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const selected = accounts.find((a: any) => a.id.toString() === value);
   const colors = selected ? (TYPE_COLORS[selected.type] ?? TYPE_COLORS.ASSET) : null;
@@ -247,52 +452,76 @@ function AccountDropdown({ value, onChange, accounts, placeholder, disabled }: {
   }, []);
 
   return (
-    <div className="nt-dd" ref={ref}>
-      <div
-        className={`nt-dd-trigger ${open ? "open" : ""} ${selected ? "filled" : ""}`}
-        onClick={() => !disabled && setOpen(o => !o)}
-      >
-        {selected ? (
-          <div className="nt-dd-selected">
-            <span className="nt-type-badge" style={{ background: colors!.bg, color: colors!.text }}>
-              <span className="nt-type-dot" style={{ background: colors!.dot }} />
-              {selected.type}
-            </span>
-            <span className="nt-dd-selected-name">{selected.name}</span>
+    <>
+      <div className="nt-dd" ref={ref}>
+        <div
+          className={`nt-dd-trigger ${open ? "open" : ""} ${selected ? "filled" : ""}`}
+          onClick={() => !disabled && setOpen(o => !o)}
+        >
+          {selected ? (
+            <div className="nt-dd-selected">
+              <span className="nt-type-badge" style={{ background: colors!.bg, color: colors!.text }}>
+                <span className="nt-type-dot" style={{ background: colors!.dot }} />
+                {selected.type}
+              </span>
+              <span className="nt-dd-selected-name">{selected.name}</span>
+            </div>
+          ) : (
+            <span className="nt-dd-placeholder">{placeholder}</span>
+          )}
+          <ChevronDown size={15} className={`nt-dd-chevron ${open ? "open" : ""}`} />
+        </div>
+
+        {open && (
+          <div className="nt-dd-menu">
+            {accounts.length === 0 ? (
+              <div style={{ padding:"14px 16px", textAlign:"center", color:"#94a3b8", fontSize:13, fontWeight:500 }}>
+                No accounts yet
+              </div>
+            ) : (
+              accounts.map((a: any) => {
+                const c = TYPE_COLORS[a.type] ?? TYPE_COLORS.ASSET;
+                return (
+                  <div
+                    key={a.id}
+                    className={`nt-dd-item ${value === a.id.toString() ? "selected" : ""}`}
+                    onClick={() => { onChange(a.id.toString()); setOpen(false); }}
+                  >
+                    <span className="nt-type-badge" style={{ background: c.bg, color: c.text }}>
+                      <span className="nt-type-dot" style={{ background: c.dot }} />
+                      {a.type}
+                    </span>
+                    <span className="nt-dd-item-name">{a.name}</span>
+                    {value === a.id.toString() && <CheckCircle2 size={14} color="#6366f1" />}
+                  </div>
+                );
+              })
+            )}
+            {/* Always-visible Create shortcut at the bottom */}
+            <div className="nt-dd-create" onClick={() => { setOpen(false); setShowCreate(true); }}>
+              <div className="nt-dd-create-icon"><Plus size={13} color="#fff" /></div>
+              <span className="nt-dd-create-label">Create new account…</span>
+            </div>
           </div>
-        ) : (
-          <span className="nt-dd-placeholder">{placeholder}</span>
         )}
-        <ChevronDown size={15} className={`nt-dd-chevron ${open ? "open" : ""}`} />
       </div>
 
-      {open && (
-        <div className="nt-dd-menu">
-          {accounts.map((a: any) => {
-            const c = TYPE_COLORS[a.type] ?? TYPE_COLORS.ASSET;
-            return (
-              <div
-                key={a.id}
-                className={`nt-dd-item ${value === a.id.toString() ? "selected" : ""}`}
-                onClick={() => { onChange(a.id.toString()); setOpen(false); }}
-              >
-                <span className="nt-type-badge" style={{ background: c.bg, color: c.text }}>
-                  <span className="nt-type-dot" style={{ background: c.dot }} />
-                  {a.type}
-                </span>
-                <span className="nt-dd-item-name">{a.name}</span>
-                {value === a.id.toString() && <CheckCircle2 size={14} color="#6366f1" />}
-              </div>
-            );
-          })}
-        </div>
+      {showCreate && (
+        <CreateAccountModal
+          onClose={() => setShowCreate(false)}
+          onCreated={(account) => {
+            onChange(account.id.toString());
+            setShowCreate(false);
+          }}
+        />
       )}
-    </div>
+    </>
   );
 }
 
 export default function NewTransaction() {
   const [step, setStep] = useState<Step>(1);
+  const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [formData, setFormData] = useState({
     debitAccountId: "", creditAccountId: "",
     amount: "", date: new Date().toISOString().split("T")[0],
@@ -326,13 +555,20 @@ export default function NewTransaction() {
   };
 
   const handleSubmit = async () => {
+    const debitId  = Number(formData.debitAccountId);
+    const creditId = Number(formData.creditAccountId);
+    if (!debitId || !creditId) {
+      toast.error("Invalid account selection — please go back and re-select the accounts");
+      return;
+    }
     try {
       await createTransaction.mutateAsync({
-        date: new Date(formData.date), description: formData.description,
+        date: new Date(formData.date + "T00:00:00"), // local midnight, avoids UTC date shift
+        description: formData.description,
         amount: formData.amount,
         quantity: formData.quantity ? parseInt(formData.quantity) : undefined,
-        debitAccountId: parseInt(formData.debitAccountId),
-        creditAccountId: parseInt(formData.creditAccountId),
+        debitAccountId: debitId,
+        creditAccountId: creditId,
       });
     } catch {}
   };
@@ -360,6 +596,30 @@ export default function NewTransaction() {
         <h1 className="nt-page-title">New Transaction</h1>
         <p className="nt-page-sub">Create a new journal entry with debit and credit accounts</p>
       </div>
+
+      {/* No-accounts banner — shown on step 1 only */}
+      {step === 1 && !accountsLoading && (accounts as any[]).length === 0 && (
+        <div className="nt-empty-banner">
+          <div className="nt-empty-icon"><AlertTriangle size={18} color="#fff" /></div>
+          <div className="nt-empty-body">
+            <div className="nt-empty-title">No accounts found</div>
+            <div className="nt-empty-desc">
+              You need at least two accounts (a debit and a credit) before recording a transaction.
+              Create your first account now — it'll be selected automatically.
+            </div>
+            <button className="nt-empty-action" onClick={() => setShowCreateAccount(true)}>
+              <Plus size={12} /> Create your first account
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showCreateAccount && (
+        <CreateAccountModal
+          onClose={() => setShowCreateAccount(false)}
+          onCreated={() => setShowCreateAccount(false)}
+        />
+      )}
 
       {/* Stepper */}
       <div className="nt-stepper">

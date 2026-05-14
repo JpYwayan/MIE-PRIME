@@ -119,22 +119,23 @@ const css = `
     box-shadow:0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.05);
     overflow:hidden; animation:fadeUp .5s ease both;
   }
-  /* The main ledger card gets a fixed max-height so accounts scroll inside */
+  /* lg-card-main: fixed height, inner scroll — toolbar + account headers stay visible */
   .lg-card-main {
     display:flex; flex-direction:column;
-    /* Account for header + KPIs + body padding + card header + toolbar */
-    max-height:calc(100vh - 280px);
+    height:calc(100vh - 310px);
+    min-height:400px;
   }
-  .lg-card-main .lg-table-wrap {
-    flex:1; overflow-y:auto; overflow-x:auto;
-    scrollbar-width:thin; scrollbar-color:rgba(79,99,210,0.20) transparent;
+  /* The accounts list scrolls inside the card */
+  .lg-accounts-scroll {
+    flex:1; overflow-y:auto; overflow-x:hidden;
+    scrollbar-width:thin; scrollbar-color:rgba(79,99,210,0.22) transparent;
   }
-  .lg-card-main .lg-table-wrap::-webkit-scrollbar { width:4px; }
-  .lg-card-main .lg-table-wrap::-webkit-scrollbar-track { background:transparent; }
-  .lg-card-main .lg-table-wrap::-webkit-scrollbar-thumb { background:rgba(79,99,210,0.20); border-radius:4px; }
-  /* Sticky thead inside scrollable card */
-  .lg-card-main .lg-table thead { position:sticky; top:0; z-index:2; }
-  /* Sticky account group header rows */
+  .lg-accounts-scroll::-webkit-scrollbar { width:5px; }
+  .lg-accounts-scroll::-webkit-scrollbar-track { background:transparent; }
+  .lg-accounts-scroll::-webkit-scrollbar-thumb { background:rgba(79,99,210,0.22); border-radius:5px; }
+  .lg-accounts-scroll::-webkit-scrollbar-thumb:hover { background:rgba(79,99,210,0.40); }
+  .lg-card-main .lg-table-wrap { overflow-x:auto; }
+  /* Sticky account group header rows — stick inside the inner scroll container */
   .lg-acct-header { position:sticky; top:0; z-index:1; background:#fff; }
   .lg-card-hd {
     padding:20px 22px 0;
@@ -321,10 +322,63 @@ const css = `
   .lg-acct-mini-suffix { font-size:9px; font-weight:400; color:var(--ink4); margin-left:4px; }
 
   @media (max-width:1100px) { .lg-kpi-row { grid-template-columns:repeat(2,1fr); } }
-  @media (max-width:640px) {
-    .lg-header { padding:16px 16px 0; flex-direction:column; gap:12px; }
-    .lg-kpi-row { padding:16px 16px 0; grid-template-columns:repeat(2,1fr); }
-    .lg-body { padding:14px 16px 20px; }
+  @media (max-width:860px) {
+    .lg-acct-header-right { gap:16px; }
+    .lg-acct-stat { min-width:70px; }
+    .lg-header-actions .lg-btn-ghost { display:none; }
+  }
+  @media (max-width:700px) {
+    /* Turn table into a card-style stacked list */
+    .lg-table-wrap { overflow-x:hidden; }
+    .lg-table thead { display:none; }
+    .lg-table, .lg-table tbody, .lg-table tr, .lg-table td { display:block; width:100%; }
+    .lg-table tr { border-bottom:1px solid var(--border2); padding:10px 18px; position:relative; }
+    .lg-table tbody tr:nth-child(even) { background:rgba(249,250,251,0.8); }
+    .lg-table td { padding:3px 0; border:none; text-align:left !important; font-family:inherit; }
+    .lg-table td::before {
+      content:attr(data-label);
+      display:inline-block; width:90px; font-size:9.5px; font-weight:700;
+      color:var(--ink4); text-transform:uppercase; letter-spacing:.08em;
+      font-family:'Space Mono',monospace; flex-shrink:0;
+    }
+    .lg-table td.right { text-align:left !important; }
+    .lg-table tfoot { display:block; }
+    .lg-table tfoot tr { padding:10px 18px; background:rgba(79,99,210,0.04); border-top:2px solid var(--border); }
+    .lg-table tfoot td { padding:3px 0; border:none; font-size:12px; }
+    /* Hide less critical cols on mobile table */
+    .lg-table td:nth-child(2),  /* Ref */
+    .lg-table td:nth-child(5)   /* Type pill */ { display:none; }
+    .lg-acct-header-right { display:none; }
+    .lg-acct-name { font-size:13px; }
+    .lg-acct-grid { grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); }
+  }
+  @media (max-width:600px) {
+    .lg-header { padding:14px 14px 0; flex-direction:column; gap:10px; }
+    .lg-kpi-row { padding:14px 14px 0; gap:10px; grid-template-columns:repeat(2,1fr); }
+    .lg-body    { padding:14px 14px 20px; gap:12px; }
+    .lg-title   { font-size:22px; }
+    .lg-kpi     { padding:14px 14px 12px; }
+    .lg-kpi-val { font-size:18px; }
+    .lg-card-hd { padding:14px 14px 0; }
+    .lg-toolbar { padding:0 14px 12px; }
+    .lg-search-wrap { max-width:100%; }
+    .lg-acct-header { padding:12px 14px; }
+    .lg-acct-header-icon { width:32px; height:32px; }
+    .lg-table tr { padding:10px 14px; }
+    .lg-acct-grid { padding:0 14px 16px; }
+    .lg-pagination { padding:10px 14px; }
+  }
+  @media (max-width:480px) {
+    .lg-header-actions { width:100%; }
+    .lg-btn-primary { width:100%; justify-content:center; }
+    .lg-toolbar { gap:6px; flex-wrap:wrap; }
+    .lg-filter-btn { font-size:11px; padding:6px 10px; }
+  }
+  @media (max-width:400px) {
+    .lg-kpi-row { grid-template-columns:1fr; }
+    .lg-kpi-meta { display:none; }
+    .lg-acct-grid { grid-template-columns:1fr 1fr; }
+    .lg-pagination-info { display:none; }
   }
 `;
 
@@ -655,11 +709,12 @@ export default function Ledger() {
             </div>
           ) : (
             <>
+              <div className="lg-accounts-scroll">
               {/* Per-account grouped sections */}
               {pagedAccounts.map((acct, idx) => {
                 const m = TYPE_META[acct.type] ?? TYPE_META.ASSET;
                 const rows = getRunningRows(acct.id);
-                const isOpen = expanded[acct.id] !== false; // default open
+                const isOpen = expanded[acct.id] === true; // default collapsed
                 const totalDr = rows.reduce((s, r) => s + (r.type === "DEBIT"  ? parseFloat(r.amount ?? r.tx?.amount ?? 0) : 0), 0);
                 const totalCr = rows.reduce((s, r) => s + (r.type === "CREDIT" ? parseFloat(r.amount ?? r.tx?.amount ?? 0) : 0), 0);
                 const endBal  = rows[rows.length - 1]?.running ?? 0;
@@ -735,12 +790,12 @@ export default function Ledger() {
 
                               return (
                                 <tr key={row.id ?? i}>
-                                  <td><span className="lg-date">{fmtDate(row.tx.date)}</span></td>
-                                  <td><span className="lg-ref">#{String(row.tx.id ?? "").slice(-6).toUpperCase() || "—"}</span></td>
-                                  <td>
+                                  <td data-label="Date"><span className="lg-date">{fmtDate(row.tx.date)}</span></td>
+                                  <td data-label="Ref"><span className="lg-ref">#{String(row.tx.id ?? "").slice(-6).toUpperCase() || "—"}</span></td>
+                                  <td data-label="Description">
                                     <span className="lg-desc">{row.tx.description}</span>
                                   </td>
-                                  <td>
+                                  <td data-label="Contra">
                                     {contra?.account ? (
                                       <span className="lg-acct-badge" style={contraMeta ? { background:contraMeta.bg, color:contraMeta.text } : {}}>
                                         {contraMeta && <span className="lg-acct-dot" style={{ background:contraMeta.dot }} />}
@@ -748,21 +803,21 @@ export default function Ledger() {
                                       </span>
                                     ) : <span style={{ color:"var(--ink4)", fontSize:11 }}>—</span>}
                                   </td>
-                                  <td>
+                                  <td data-label="Type">
                                     <span className={`lg-entry-pill ${isDr ? "dr" : "cr"}`}>
                                       {isDr ? <ArrowDownLeft size={9} /> : <ArrowUpRight size={9} />}
                                       {isDr ? "Dr" : "Cr"}
                                     </span>
                                   </td>
-                                  <td className="right">
+                                  <td className="right" data-label="Debit">
                                     {isDr ? <span className="lg-dr">{fmtCurrency(amt)}</span>
                                            : <span style={{ color:"var(--ink4)" }}>—</span>}
                                   </td>
-                                  <td className="right">
+                                  <td className="right" data-label="Credit">
                                     {!isDr ? <span className="lg-cr">{fmtCurrency(amt)}</span>
                                            : <span style={{ color:"var(--ink4)" }}>—</span>}
                                   </td>
-                                  <td className="right">
+                                  <td className="right" data-label="Balance">
                                     <span className={balClass(row.running)}>{fmtCurrency(Math.abs(row.running))}</span>
                                     <span style={{ fontSize:9, color:"var(--ink4)", marginLeft:4 }}>
                                       {row.running > 0 ? "Dr" : row.running < 0 ? "Cr" : ""}
@@ -832,6 +887,7 @@ export default function Ledger() {
                   </div>
                 </div>
               )}
+              </div>{/* /lg-accounts-scroll */}
             </>
           )}
         </div>
