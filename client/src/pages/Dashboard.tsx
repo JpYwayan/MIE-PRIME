@@ -530,7 +530,6 @@ export default function Dashboard() {
                 <div className="db-card-title">Activities</div>
                 <div className="db-card-sub">Manage your activities here.</div>
               </div>
-              <span className="db-badge" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}>DEMO</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px 20px", flex: 1, justifyContent: "center" }}>
               {activitiesLoading ? (
