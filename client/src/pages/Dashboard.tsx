@@ -243,7 +243,8 @@ export default function Dashboard() {
   const recentTx: any[] = Array.isArray(transactions)
     ? transactions
     : (transactions as any)?.data ?? (transactions as any)?.items ?? [];
-  const txCount = recentTx.length;
+  const allTxList: any[] = Array.isArray(allTransactions) ? allTransactions : (allTransactions as any)?.data ?? (allTransactions as any)?.items ?? [];
+  const txCount = allTxList.length;
 
   const fmt = (v: number) =>
     new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 2 }).format(v);
